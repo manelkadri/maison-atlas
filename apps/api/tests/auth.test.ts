@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
+import bcrypt from "bcryptjs";
 import supertest from "supertest";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { MIN_ADMIN_PASSWORD_LENGTH, validateAdminPassword, verifyPassword } from "../src/utils/password";
 import { ADMIN, createAdmin, getApp, http, prisma, resetDatabase } from "./helpers";
 
@@ -130,6 +131,107 @@ describe("mots de passe", () => {
   it("verifyPassword refuse toujours un compte inconnu (hash absent)", async () => {
     expect(await verifyPassword("n'importe-quoi", undefined)).toBe(false);
     expect(await verifyPassword("n'importe-quoi", null)).toBe(false);
+  });
+});
+
+describe("compte propriétaire : changement de mot de passe et d'e-mail", () => {
+  const NEW_PASSWORD = "un-tout-nouveau-mot-de-passe";
+  const login = (email: string, password: string) => http().post("/api/auth/login").send({ email, password });
+
+  beforeEach(async () => {
+    await resetDatabase();
+    await createAdmin();
+  });
+
+  async function connectedAgent() {
+    const agent = supertest.agent(getApp());
+    await agent.post("/api/auth/login").send({ email: ADMIN.email, password: ADMIN.password }).expect(200);
+    return agent;
+  }
+
+  describe("POST /api/admin/auth/change-password", () => {
+    it("change le mot de passe : 204, le nouveau fonctionne, l'ancien est refusé, le hash est bcrypt coût 12", async () => {
+      const agent = await connectedAgent();
+      const res = await agent.post("/api/admin/auth/change-password").send({ currentPassword: ADMIN.password, newPassword: NEW_PASSWORD });
+      expect(res.status).toBe(204);
+      expect(res.headers["cache-control"]).toMatch(/no-store/);
+      expect((await login(ADMIN.email, NEW_PASSWORD)).status).toBe(200);
+      expect((await login(ADMIN.email, ADMIN.password)).status).toBe(401);
+      const user = await prisma.adminUser.findFirstOrThrow();
+      expect(user.passwordHash).toMatch(/^\$2[aby]\$12\$/);
+      expect(await verifyPassword(NEW_PASSWORD, user.passwordHash)).toBe(true);
+    });
+
+    it("mot de passe actuel erroné : 403 (jamais 401, sinon l'interface croirait la session expirée) et rien ne change", async () => {
+      const agent = await connectedAgent();
+      const res = await agent.post("/api/admin/auth/change-password").send({ currentPassword: "mauvais-mot-de-passe-123", newPassword: NEW_PASSWORD });
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe("FORBIDDEN");
+      expect(res.body.error.message).toMatch(/actuel est incorrect/);
+      expect((await login(ADMIN.email, ADMIN.password)).status).toBe(200);
+    });
+
+    it("refuse un nouveau mot de passe trop court, trop long ou identique à l'actuel (400 VALIDATION)", async () => {
+      const agent = await connectedAgent();
+      for (const newPassword of ["court", "x".repeat(MIN_ADMIN_PASSWORD_LENGTH - 1), "x".repeat(73), ADMIN.password]) {
+        const res = await agent.post("/api/admin/auth/change-password").send({ currentPassword: ADMIN.password, newPassword });
+        expect(res.status).toBe(400);
+        expect(res.body.error.code).toBe("VALIDATION");
+      }
+      expect((await login(ADMIN.email, ADMIN.password)).status).toBe(200);
+    });
+
+    it("exige une session (401) et ne révèle rien sans elle", async () => {
+      const res = await http().post("/api/admin/auth/change-password").send({ currentPassword: ADMIN.password, newPassword: NEW_PASSWORD });
+      expect(res.status).toBe(401);
+      expect((await login(ADMIN.email, ADMIN.password)).status).toBe(200);
+    });
+
+    it("refuse une requête portant une autre origine (CSRF)", async () => {
+      const agent = await connectedAgent();
+      const res = await agent
+        .post("/api/admin/auth/change-password")
+        .set("Origin", "https://site-malveillant.example")
+        .send({ currentPassword: ADMIN.password, newPassword: NEW_PASSWORD });
+      expect(res.status).toBe(403);
+      expect((await login(ADMIN.email, ADMIN.password)).status).toBe(200);
+    });
+  });
+
+  describe("POST /api/admin/auth/change-email", () => {
+    it("change l'e-mail (minuscules), réémet la session et /me renvoie le nouvel e-mail", async () => {
+      const agent = await connectedAgent();
+      const res = await agent.post("/api/admin/auth/change-email").send({ currentPassword: ADMIN.password, newEmail: "  Patron@Boutique.DZ " });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ email: "patron@boutique.dz" });
+      expect(setCookie(res).some((c) => c.startsWith("admin_session=") && /HttpOnly/i.test(c))).toBe(true);
+      expect((await agent.get("/api/auth/me")).body).toEqual({ email: "patron@boutique.dz" });
+      expect((await login("patron@boutique.dz", ADMIN.password)).status).toBe(200);
+      expect((await login(ADMIN.email, ADMIN.password)).status).toBe(401);
+    });
+
+    it("mot de passe actuel erroné : 403 et l'e-mail ne change pas", async () => {
+      const agent = await connectedAgent();
+      const res = await agent.post("/api/admin/auth/change-email").send({ currentPassword: "mauvais-mot-de-passe-123", newEmail: "patron@boutique.dz" });
+      expect(res.status).toBe(403);
+      expect((await prisma.adminUser.findFirstOrThrow()).email).toBe(ADMIN.email);
+    });
+
+    it("e-mail invalide : 400 ; sans session : 401", async () => {
+      const agent = await connectedAgent();
+      const bad = await agent.post("/api/admin/auth/change-email").send({ currentPassword: ADMIN.password, newEmail: "pas-un-email" });
+      expect(bad.status).toBe(400);
+      const anon = await http().post("/api/admin/auth/change-email").send({ currentPassword: ADMIN.password, newEmail: "patron@boutique.dz" });
+      expect(anon.status).toBe(401);
+    });
+
+    it("e-mail déjà utilisé par un autre compte : 409", async () => {
+      await prisma.adminUser.create({ data: { email: "autre@test.local", passwordHash: await bcrypt.hash("whatever-password-1", 4) } });
+      const agent = await connectedAgent();
+      const res = await agent.post("/api/admin/auth/change-email").send({ currentPassword: ADMIN.password, newEmail: "AUTRE@test.local" });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe("CONFLICT");
+    });
   });
 });
 

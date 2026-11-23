@@ -59,6 +59,42 @@ export const adminLoginSchema = z.object({
 });
 export type AdminLoginValues = z.infer<typeof adminLoginSchema>;
 
+/* ---------- Compte propriétaire : changement de mot de passe / d'e-mail ---------- */
+
+/** Longueur minimale d'un mot de passe administrateur (identique côté serveur : `MIN_ADMIN_PASSWORD_LENGTH`). */
+export const ADMIN_PASSWORD_MIN_LENGTH = 12;
+/** bcrypt ignore tout ce qui dépasse 72 octets : on refuse plutôt que de tronquer en silence. */
+export const ADMIN_PASSWORD_MAX_LENGTH = 72;
+
+const currentPasswordField = z.string().min(1, "Le mot de passe actuel est obligatoire.");
+const newPasswordField = z
+  .string()
+  .min(ADMIN_PASSWORD_MIN_LENGTH, `Le nouveau mot de passe doit contenir au moins ${ADMIN_PASSWORD_MIN_LENGTH} caractères.`)
+  .max(ADMIN_PASSWORD_MAX_LENGTH, `Le nouveau mot de passe ne peut pas dépasser ${ADMIN_PASSWORD_MAX_LENGTH} caractères.`);
+
+/** Corps de `POST /admin/auth/change-password` (le formulaire ajoute la confirmation : voir ci-dessous). */
+export const adminChangePasswordSchema = z
+  .object({ currentPassword: currentPasswordField, newPassword: newPasswordField })
+  .refine((v) => v.newPassword !== v.currentPassword, {
+    path: ["newPassword"],
+    message: "Le nouveau mot de passe doit être différent de l'actuel.",
+  });
+export type AdminChangePasswordValues = z.infer<typeof adminChangePasswordSchema>;
+
+/** Formulaire de changement de mot de passe : mêmes règles + confirmation identique. */
+export const adminChangePasswordFormSchema = z
+  .object({ currentPassword: currentPasswordField, newPassword: newPasswordField, confirmPassword: z.string().min(1, "Confirmez le nouveau mot de passe.") })
+  .refine((v) => v.newPassword === v.confirmPassword, { path: ["confirmPassword"], message: "Les deux mots de passe ne correspondent pas." })
+  .refine((v) => v.newPassword !== v.currentPassword, { path: ["newPassword"], message: "Le nouveau mot de passe doit être différent de l'actuel." });
+export type AdminChangePasswordFormValues = z.infer<typeof adminChangePasswordFormSchema>;
+
+/** Corps de `POST /admin/auth/change-email` (et formulaire). Le mot de passe actuel confirme l'identité. */
+export const adminChangeEmailSchema = z.object({
+  currentPassword: currentPasswordField,
+  newEmail: z.string().trim().min(1, "Le nouvel e-mail est obligatoire.").email("Adresse e-mail invalide."),
+});
+export type AdminChangeEmailValues = z.infer<typeof adminChangeEmailSchema>;
+
 export const customerLoginSchema = z.object({
   phone: phoneSchema,
 });

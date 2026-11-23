@@ -9,6 +9,13 @@ export const apiAuthService: AuthService = {
     await apiFetch<void>("/auth/logout", { method: "POST" });
   },
 
+  async changePassword(currentPassword, newPassword) {
+    await apiFetch<void>("/admin/auth/change-password", { method: "POST", body: { currentPassword, newPassword } });
+  },
+
+  changeEmail: (currentPassword, newEmail) =>
+    apiFetch<{ email: string }>("/admin/auth/change-email", { method: "POST", body: { currentPassword, newEmail } }),
+
   async me() {
     try {
       return await apiFetch<{ email: string }>("/auth/me");

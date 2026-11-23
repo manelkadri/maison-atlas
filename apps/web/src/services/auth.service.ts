@@ -1,5 +1,6 @@
 import { useAdminSessionStore } from "@/stores/admin-session.store";
 import type { AuthService } from "./contracts";
+import { ServiceError } from "./errors";
 
 /**
  * Authentification SIMULÉE (mode mock) — NON SÉCURISÉE.
@@ -20,5 +21,13 @@ export const authService: AuthService = {
   async me() {
     const { isAuthenticated, email } = useAdminSessionStore.getState();
     return isAuthenticated && email ? { email } : null;
+  },
+
+  async changePassword() {
+    throw new ServiceError("NOT_CONFIGURED", "Indisponible en mode démonstration : la connexion y est simulée.");
+  },
+
+  async changeEmail() {
+    throw new ServiceError("NOT_CONFIGURED", "Indisponible en mode démonstration : la connexion y est simulée.");
   },
 };

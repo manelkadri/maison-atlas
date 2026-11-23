@@ -139,6 +139,10 @@ export interface AuthService {
   logout(): Promise<void>;
   /** Session courante, ou `null` si aucune session valide. */
   me(): Promise<{ email: string } | null>;
+  /** Change le mot de passe du propriétaire (mot de passe actuel exigé). Mode API uniquement. */
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
+  /** Change l'e-mail de connexion (mot de passe actuel exigé) ; renvoie l'e-mail enregistré. Mode API uniquement. */
+  changeEmail(currentPassword: string, newEmail: string): Promise<{ email: string }>;
 }
 
 export interface NewsletterService {

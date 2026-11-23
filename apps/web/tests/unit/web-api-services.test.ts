@@ -311,6 +311,27 @@ describe("authentification", () => {
     expect(`${calls[0]?.init.method} ${calls[0]?.url}`).toBe("POST /api/auth/logout");
   });
 
+  it("changePassword : POST /admin/auth/change-password (204) ; mot de passe actuel erroné ⇒ FORBIDDEN, message du serveur conservé", async () => {
+    const { calls } = stubFetch(() => noContent());
+    await apiAuthService.changePassword("ancien-mot-de-passe", "nouveau-mot-de-passe-12");
+    expect(`${calls[0]?.init.method} ${calls[0]?.url}`).toBe("POST /api/admin/auth/change-password");
+    expect(bodyOf(calls[0]!)).toEqual({ currentPassword: "ancien-mot-de-passe", newPassword: "nouveau-mot-de-passe-12" });
+    stubFetch(() => apiError(403, "FORBIDDEN", "Le mot de passe actuel est incorrect."));
+    await expect(apiAuthService.changePassword("x", "nouveau-mot-de-passe-12")).rejects.toMatchObject({
+      code: "FORBIDDEN",
+      message: "Le mot de passe actuel est incorrect.",
+    });
+  });
+
+  it("changeEmail : POST /admin/auth/change-email ⇒ { email } ; adresse prise ⇒ CONFLICT", async () => {
+    const { calls } = stubFetch(() => json({ email: "patron@boutique.dz" }));
+    await expect(apiAuthService.changeEmail("mot-de-passe", "Patron@Boutique.dz")).resolves.toEqual({ email: "patron@boutique.dz" });
+    expect(calls[0]?.url).toBe("/api/admin/auth/change-email");
+    expect(bodyOf(calls[0]!)).toEqual({ currentPassword: "mot-de-passe", newEmail: "Patron@Boutique.dz" });
+    stubFetch(() => apiError(409, "CONFLICT", "Cette adresse e-mail est déjà utilisée."));
+    await expect(apiAuthService.changeEmail("mot-de-passe", "autre@test.dz")).rejects.toMatchObject({ code: "CONFLICT" });
+  });
+
   it("me : session ⇒ { email } ; 401 ⇒ null ; autre erreur ⇒ propagée", async () => {
     stubFetch(() => json({ email: "owner@example.com" }));
     await expect(apiAuthService.me()).resolves.toEqual({ email: "owner@example.com" });

@@ -28,5 +28,7 @@ export function limiter(options: { windowMs: number; limit: number; message: str
 }
 
 export const loginLimiter = () => limiter({ windowMs: 15 * 60_000, limit: 10, message: "Trop de tentatives de connexion. Réessayez dans quelques minutes." });
-export const orderLimiter = () => limiter({ windowMs: 60 * 60_000, limit: 20, message: "Trop de commandes depuis cette adresse. Réessayez plus tard." });
+/** Changement de mot de passe / d'e-mail : le mot de passe actuel est redemandé, donc on limite les essais. */
+export const credentialsLimiter = () => limiter({ windowMs: 15 * 60_000, limit: 10, message: "Trop de tentatives. Réessayez dans quelques minutes." });
+export const orderLimiter =() => limiter({ windowMs: 60 * 60_000, limit: 20, message: "Trop de commandes depuis cette adresse. Réessayez plus tard." });
 export const publicWriteLimiter = () => limiter({ windowMs: 15 * 60_000, limit: 30, message: "Trop de requêtes. Réessayez dans quelques minutes." });

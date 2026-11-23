@@ -20,6 +20,7 @@ import { formValuesToSettings, settingsFormSchemaWithLinks, settingsToFormValues
 import { isApiMode } from "@/lib/api-config";
 import { getErrorMessage } from "@/services";
 import type { StoreSettings } from "@/types/settings.types";
+import { AccountSection } from "./account-section";
 import { DemoDataSection } from "./demo-data-section";
 import { LogoUpload } from "./logo-upload";
 import { ShippingZones } from "./shipping-zones";
@@ -222,6 +223,12 @@ function SettingsForm({ settings }: { settings: StoreSettings }) {
           </div>
         </div>
       </form>
+
+      {isApiMode() && (
+        <Section title="Sécurité du compte" description="Modifiez le mot de passe et l'adresse e-mail de connexion du propriétaire. Votre mot de passe actuel est demandé à chaque changement.">
+          <AccountSection />
+        </Section>
+      )}
 
       {!isApiMode() && (
         <Section title="Données de démonstration" description="Cette application fonctionne avec des données fictives.">
