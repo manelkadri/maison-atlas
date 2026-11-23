@@ -178,25 +178,6 @@ export function SectionInfo({ form, categoryOptions, categoriesLoading, slugManu
           />
         </FormField>
 
-        <FormField label="Genre" htmlFor="product-gender" error={errors.gender?.message}>
-          <Controller
-            control={control}
-            name="gender"
-            render={({ field }) => (
-              <Select value={field.value} onValueChange={field.onChange}>
-                <SelectTrigger id="product-gender" className="w-full" onBlur={field.onBlur}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="women">Femme</SelectItem>
-                  <SelectItem value="men">Homme</SelectItem>
-                  <SelectItem value="unisex">Mixte</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </FormField>
-
         <FormField label="Tags" htmlFor="product-tags" hint="Entrée ou virgule pour valider. Utilisés par la recherche." className="sm:col-span-2">
           <Controller control={control} name="tags" render={({ field }) => <TagsInput value={field.value} onChange={field.onChange} />} />
         </FormField>

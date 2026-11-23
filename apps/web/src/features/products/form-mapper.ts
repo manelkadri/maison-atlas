@@ -107,7 +107,7 @@ export function emptyProductFormValues(defaultAlertThreshold = 3): ProductFormVa
     reference: "",
     description: "",
     categoryId: "",
-    gender: "unisex",
+    gender: "women",
     tags: [],
     regularPrice: Number.NaN,
     promoPrice: undefined,

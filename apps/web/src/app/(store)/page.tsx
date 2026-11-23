@@ -9,7 +9,7 @@ import { PromoBanner } from "@/components/store/home/promo-banner";
 import { siteConfig } from "@/config/site";
 import { categoryService, productService } from "@/services";
 
-const title = "Mode femme, homme & accessoires";
+const title = "Mode femme & accessoires";
 
 export const metadata: Metadata = {
   title: { absolute: `${siteConfig.name} — ${title}` },

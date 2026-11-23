@@ -8,7 +8,7 @@ import { categoryService } from "@/services";
 
 export const metadata: Metadata = {
   title: "Catégories",
-  description: `Parcourez toutes les catégories ${siteConfig.name} : femme, homme, accessoires et nouveautés.`,
+  description: `Parcourez toutes les catégories ${siteConfig.name} : mode femme, accessoires et nouveautés.`,
   alternates: { canonical: "/categories" },
   openGraph: { title: `Catégories | ${siteConfig.name}`, description: "Toutes nos catégories de vêtements et d'accessoires.", url: "/categories" },
 };

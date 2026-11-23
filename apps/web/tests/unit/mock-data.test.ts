@@ -79,3 +79,16 @@ describe("données mockées — cohérence", () => {
     }
   });
 });
+
+describe("boutique 100 % femme", () => {
+  it("ne contient aucune catégorie ni aucun produit pour homme", () => {
+    expect(categoriesMock.some((c) => /homme/i.test(c.slug) || /homme/i.test(c.name))).toBe(false);
+    expect(productsMock.every((p) => p.gender === "women")).toBe(true);
+    expect(productsMock.some((p) => /^ATL-H-/.test(p.reference))).toBe(false);
+  });
+
+  it("les catégories racines sont Femme, Accessoires et la collection Nouveautés", () => {
+    const roots = categoriesMock.filter((c) => c.parentId === null).map((c) => c.slug);
+    expect(roots).toEqual(["femme", "accessoires", "nouveautes"]);
+  });
+});

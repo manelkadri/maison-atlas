@@ -5,7 +5,7 @@ test.describe("boutique — parcours client", () => {
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toContainText(/élégance/i);
     await expect(page.getByRole("link", { name: "Découvrir la collection" })).toBeVisible();
-    for (const name of ["Femme", "Homme", "Accessoires"]) {
+    for (const name of ["Femme", "Accessoires"]) {
       await expect(page.getByRole("main").getByRole("link", { name: new RegExp(name) }).first()).toBeVisible();
     }
     await expect(page.getByRole("heading", { name: /nouveautés/i }).first()).toBeVisible();

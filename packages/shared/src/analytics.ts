@@ -140,7 +140,7 @@ export function buildCategoryBreakdown(orders: Order[], products: Product[], cat
     const ratio = o.subtotal > 0 ? (o.subtotal - o.discountTotal) / o.subtotal : 1; // remise répartie au prorata
     for (const it of o.items) {
       let cat = catById.get(productCat.get(it.productId) ?? "");
-      // On remonte à la catégorie racine (Femme, Homme, Accessoires) pour une lecture synthétique.
+      // On remonte à la catégorie racine (Femme, Accessoires) pour une lecture synthétique.
       while (cat?.parentId) cat = catById.get(cat.parentId) ?? cat;
       if (!cat) continue;
       const cur = map.get(cat.id) ?? { categoryId: cat.id, name: cat.name, revenue: 0, unitsSold: 0 };

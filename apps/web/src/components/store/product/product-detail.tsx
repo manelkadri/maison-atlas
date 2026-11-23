@@ -227,7 +227,7 @@ function ProductView({ product, initialRelated }: { product: Product; initialRel
                 value={variant ? size : undefined}
                 onChange={selectSize}
                 invalid={highlightSize}
-                guide={oneSize ? undefined : <SizeGuideDialog gender={product.gender} />}
+                guide={oneSize ? undefined : <SizeGuideDialog />}
               />
             </div>
 
@@ -307,7 +307,7 @@ function ProductView({ product, initialRelated }: { product: Product; initialRel
                     <p className="text-muted-foreground leading-relaxed">
                       Comparez vos mensurations (poitrine, taille, hanches) avec notre tableau de correspondance pour choisir la taille idéale.
                     </p>
-                    <SizeGuideDialog gender={product.gender} />
+                    <SizeGuideDialog />
                   </AccordionContent>
                 </AccordionItem>
               )}

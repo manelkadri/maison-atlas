@@ -9,7 +9,7 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfa
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
-  title: { default: `${siteConfig.name} — Mode femme, homme & accessoires`, template: `%s | ${siteConfig.name}` },
+  title: { default: `${siteConfig.name} — Mode femme & accessoires`, template: `%s | ${siteConfig.name}` },
   description: siteConfig.description,
   applicationName: siteConfig.name,
   openGraph: {

@@ -121,7 +121,7 @@ export const INFO_PAGES: InfoPage[] = [
   {
     slug: "guide-des-tailles",
     title: "Guide des tailles",
-    description: "Tableaux de correspondance des tailles femme et homme et conseils pour prendre vos mesures.",
+    description: "Tableau de correspondance des tailles et conseils pour prendre vos mesures.",
     intro: "Trouvez votre taille en comparant vos mensurations aux tableaux ci-dessous. En cas d'hésitation entre deux tailles, prenez la plus grande pour un tombé plus confortable.",
     sections: [
       {

@@ -2,7 +2,7 @@
 export const siteConfig = {
   name: process.env.NEXT_PUBLIC_STORE_NAME ?? "Maison Atlas",
   description:
-    "Prêt-à-porter féminin, masculin et accessoires. Paiement à la livraison, livraison à domicile ou en bureau partout en Algérie.",
+    "Prêt-à-porter féminin et accessoires. Paiement à la livraison, livraison à domicile ou en bureau partout en Algérie.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   locale: "fr_DZ",
   currency: "DZD",
@@ -17,7 +17,6 @@ export const storeNav: NavItem[] = [
   { label: "Accueil", href: "/" },
   { label: "Boutique", href: "/shop" },
   { label: "Femme", href: "/shop?category=femme" },
-  { label: "Homme", href: "/shop?category=homme" },
   { label: "Nouveautés", href: "/shop?collection=new" },
   { label: "Promotions", href: "/shop?collection=sale" },
 ];
@@ -26,7 +25,6 @@ export const footerLinks = {
   shop: [
     { label: "Toute la boutique", href: "/shop" },
     { label: "Femme", href: "/shop?category=femme" },
-    { label: "Homme", href: "/shop?category=homme" },
     { label: "Accessoires", href: "/shop?category=accessoires" },
     { label: "Nouveautés", href: "/shop?collection=new" },
   ],

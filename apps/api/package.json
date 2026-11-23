@@ -16,7 +16,8 @@
     "db:migrate": "prisma migrate dev --schema ../../prisma/schema.prisma",
     "db:deploy": "prisma migrate deploy --schema ../../prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:demo": "tsx prisma/seed-demo.ts"
+    "db:seed:demo": "tsx prisma/seed-demo.ts",
+    "db:archive-men": "tsx prisma/archive-men.ts"
   },
   "dependencies": {
     "@fashion/shared": "workspace:*",

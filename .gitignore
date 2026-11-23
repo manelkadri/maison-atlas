@@ -27,3 +27,7 @@ apps/api/.pgdata
 apps/api/.pgdata.log
 apps/api/uploads
 apps/api/dist
+
+# Production (contient des mots de passe)
+.env.production
+apps/api/.env.production

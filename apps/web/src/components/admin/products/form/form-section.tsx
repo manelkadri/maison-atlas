@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export const FORM_SECTIONS = [
-  { id: "section-info", label: "Informations", fields: ["name", "slug", "reference", "description", "categoryId", "gender", "tags"] },
+  { id: "section-info", label: "Informations", fields: ["name", "slug", "reference", "description", "categoryId", "tags"] },
   { id: "section-pricing", label: "Prix", fields: ["regularPrice", "promoPrice", "costPrice"] },
   { id: "section-images", label: "Images", fields: ["images"] },
   { id: "section-variants", label: "Couleurs, tailles et stock", fields: ["colors", "sizes", "variants", "defaultAlertThreshold"] },

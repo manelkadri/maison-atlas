@@ -2,8 +2,6 @@
 
 import { Ruler } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Gender } from "@/types/product.types";
 import { MEASURING_TIPS, SIZE_GUIDE, type SizeGuideKind } from "./size-guide-data";
 
 function SizeTable({ kind }: { kind: SizeGuideKind }) {
@@ -38,8 +36,7 @@ function SizeTable({ kind }: { kind: SizeGuideKind }) {
 }
 
 /** Bouton + fenêtre « Guide des tailles » avec tableau de correspondance (mesures du corps, en cm). */
-export function SizeGuideDialog({ gender }: { gender: Gender }) {
-  const defaultTab: SizeGuideKind = gender === "men" ? "men" : "women";
+export function SizeGuideDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
@@ -54,18 +51,7 @@ export function SizeGuideDialog({ gender }: { gender: Gender }) {
           <DialogDescription>Mesures du corps en centimètres. En cas d&apos;hésitation entre deux tailles, choisissez la plus grande.</DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue={defaultTab}>
-          <TabsList>
-            <TabsTrigger value="women">{SIZE_GUIDE.women.title}</TabsTrigger>
-            <TabsTrigger value="men">{SIZE_GUIDE.men.title}</TabsTrigger>
-          </TabsList>
-          <TabsContent value="women" className="mt-4">
-            <SizeTable kind="women" />
-          </TabsContent>
-          <TabsContent value="men" className="mt-4">
-            <SizeTable kind="men" />
-          </TabsContent>
-        </Tabs>
+        <SizeTable kind="women" />
 
         <div className="space-y-2">
           <h3 className="text-sm font-medium">Comment se mesurer ?</h3>

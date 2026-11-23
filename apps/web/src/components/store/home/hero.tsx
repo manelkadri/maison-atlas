@@ -18,7 +18,7 @@ export function Hero() {
             L&apos;élégance du quotidien, taillée pour durer
           </h1>
           <p className="reveal text-primary-foreground/90 mt-5 max-w-md text-base leading-relaxed [animation-delay:160ms] sm:text-lg">
-            Des pièces intemporelles pour femme et homme chez {siteConfig.name}. Commandez en ligne, payez à la réception, partout en Algérie.
+            Des pièces intemporelles pour femme chez {siteConfig.name}. Commandez en ligne, payez à la réception, partout en Algérie.
           </p>
           <div className="reveal mt-8 flex flex-col gap-3 [animation-delay:240ms] sm:flex-row">
             <Button asChild size="lg" variant="secondary" className="h-12 px-8 text-base">

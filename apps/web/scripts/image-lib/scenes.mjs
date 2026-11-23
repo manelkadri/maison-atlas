@@ -55,38 +55,6 @@ const CAT = {
       { kind: "coat", hex: "#b08a5b", x: 700, y: 770, s: 0.88, rot: 2 },
     ],
   },
-  homme: {
-    bg: "#e1ddd3",
-    deco: "C",
-    pieces: [
-      { kind: "top", hex: "#bcd0e0", opts: { kind: "oxford" }, x: 480, y: 780, s: 0.86, rot: -2 },
-      { kind: "pants", hex: "#d8c3a5", opts: { kind: "chino" }, x: 800, y: 980, s: 0.58, rot: 4 },
-    ],
-  },
-  chemises: {
-    bg: "#e8e2d7",
-    deco: "A",
-    pieces: [
-      { kind: "top", hex: "#e3c3c0", opts: { kind: "oxford" }, x: 420, y: 840, s: 0.72, rot: -6 },
-      { kind: "top", hex: "#bcd0e0", opts: { kind: "oxford" }, x: 700, y: 790, s: 0.84, rot: 2 },
-    ],
-  },
-  "t-shirts-polos": {
-    bg: "#ddd3c1",
-    deco: "B",
-    pieces: [
-      { kind: "tee", hex: "#1f2f4a", opts: { polo: true }, x: 440, y: 860, s: 0.74, rot: -5 },
-      { kind: "tee", hex: "#ffffff", x: 710, y: 790, s: 0.84, rot: 2 },
-    ],
-  },
-  "pantalons-homme": {
-    bg: "#e6ded0",
-    deco: "C",
-    pieces: [
-      { kind: "pants", hex: "#6b6a3f", opts: { kind: "chino" }, x: 430, y: 860, s: 0.72, rot: -3 },
-      { kind: "pants", hex: "#2a3a55", opts: { kind: "jean" }, x: 720, y: 780, s: 0.84, rot: 2 },
-    ],
-  },
   vestes: {
     bg: "#e5dfd4",
     deco: "A",

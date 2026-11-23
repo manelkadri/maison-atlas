@@ -41,8 +41,8 @@ describe("paramètres du catalogue <-> filtres", () => {
   });
 
   it("accepte l'objet searchParams d'une page serveur (valeurs simples ou tableaux)", () => {
-    const { filters, page } = parseCatalogParams({ category: ["homme", "femme"], sizes: "S", page: "3", ignored: "x" });
-    expect(filters).toEqual({ category: "homme", sizes: ["S"] });
+    const { filters, page } = parseCatalogParams({ category: ["accessoires", "femme"], sizes: "S", page: "3", ignored: "x" });
+    expect(filters).toEqual({ category: "accessoires", sizes: ["S"] });
     expect(page).toBe(3);
   });
 
@@ -135,7 +135,7 @@ describe("facettes et puces du catalogue", () => {
 
   it("construit l'arbre de catégories (racines + sous-catégories, sans collections)", () => {
     const tree = buildCategoryTree(categoriesMock);
-    expect(tree.map((n) => n.category.slug)).toEqual(["femme", "homme", "accessoires"]);
+    expect(tree.map((n) => n.category.slug)).toEqual(["femme", "accessoires"]);
     expect(tree[0]?.children.map((c) => c.slug)).toContain("robes");
   });
 

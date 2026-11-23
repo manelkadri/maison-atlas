@@ -78,7 +78,7 @@ describe("filtres catalogue", () => {
   it("inclut les sous-catégories d'une catégorie parent", () => {
     const femme = applyProductFilters(pub, { category: "femme" }, categoriesMock);
     expect(femme.length).toBeGreaterThan(0);
-    expect(femme.every((p) => ["cat_robes", "cat_hauts", "cat_pantalons_f", "cat_manteaux", "cat_femme"].includes(p.categoryId))).toBe(true);
+    expect(femme.every((p) => ["cat_robes", "cat_hauts", "cat_pantalons_f", "cat_manteaux", "cat_vestes", "cat_femme"].includes(p.categoryId))).toBe(true);
   });
 
   it("filtre taille+couleur sur une variante réellement en stock", () => {
