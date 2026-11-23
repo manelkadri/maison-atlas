@@ -36,28 +36,38 @@ export type SeedResult = {
   counts: Record<string, number>;
 };
 
-const MOCKS_DIR = resolve(fileURLToPath(import.meta.url), "../../../web/src/mocks");
+/**
+ * Le dossier des mocks du site (apps/web/src/mocks) est fourni À L'EXÉCUTION (option `--mocks <dossier>` ou variable
+ * DEMO_MOCKS_DIR), jamais écrit en dur : un chemin constant vers apps/web serait suivi par l'analyse statique des
+ * plateformes de déploiement (Vercel), qui tenterait alors de compiler le code du site avec la configuration de l'API.
+ */
+function requireMocksDir(dir: string | undefined): string {
+  const value = dir ?? process.env.DEMO_MOCKS_DIR;
+  if (!value) throw new Error("Dossier des mocks manquant : lancez `pnpm db:seed:demo` (il passe --mocks ../web/src/mocks) ou définissez DEMO_MOCKS_DIR.");
+  return resolve(process.cwd(), value);
+}
 
 /**
  * Charge les mocks du frontend. Import dynamique : ces fichiers n'ont que des `import type` vers l'alias `@/` du site web
  * (effacés à l'exécution), mais le compilateur de l'API ne doit pas tenter de les résoudre.
  */
-async function importMock<T>(file: string, exportName: string): Promise<T> {
-  const mod = (await import(/* @vite-ignore */ pathToFileURL(resolve(MOCKS_DIR, file)).href)) as Record<string, unknown>;
+async function importMock<T>(dir: string, file: string, exportName: string): Promise<T> {
+  const mod = (await import(/* @vite-ignore */ pathToFileURL(resolve(dir, file)).href)) as Record<string, unknown>;
   const value = mod[exportName];
   if (value === undefined) throw new Error(`Mock introuvable : ${file} → ${exportName}`);
   return value as T;
 }
 
-export async function loadDemoData(): Promise<DemoData> {
+export async function loadDemoData(mocksDir?: string): Promise<DemoData> {
+  const dir = requireMocksDir(mocksDir);
   const [categories, products, customers, orders, movements, promotions, settings] = await Promise.all([
-    importMock<Category[]>("categories.mock.ts", "categoriesMock"),
-    importMock<Product[]>("products.mock.ts", "productsMock"),
-    importMock<Customer[]>("customers.mock.ts", "customersMock"),
-    importMock<Order[]>("orders.mock.ts", "ordersMock"),
-    importMock<StockMovement[]>("inventory.mock.ts", "stockMovementsMock"),
-    importMock<Promotion[]>("promotions.mock.ts", "promotionsMock"),
-    importMock<StoreSettings>("settings.mock.ts", "settingsMock"),
+    importMock<Category[]>(dir, "categories.mock.ts", "categoriesMock"),
+    importMock<Product[]>(dir, "products.mock.ts", "productsMock"),
+    importMock<Customer[]>(dir, "customers.mock.ts", "customersMock"),
+    importMock<Order[]>(dir, "orders.mock.ts", "ordersMock"),
+    importMock<StockMovement[]>(dir, "inventory.mock.ts", "stockMovementsMock"),
+    importMock<Promotion[]>(dir, "promotions.mock.ts", "promotionsMock"),
+    importMock<StoreSettings>(dir, "settings.mock.ts", "settingsMock"),
   ]);
   return { categories, products, customers, orders, movements, promotions, settings };
 }
@@ -109,10 +119,10 @@ async function ensureSettingsAndAdmin(
 
 export async function seedDemo(
   prisma: PrismaClient,
-  options: { adminEmail?: string; adminPassword?: string; log?: (message: string) => void; data?: DemoData } = {},
+  options: { adminEmail?: string; adminPassword?: string; log?: (message: string) => void; data?: DemoData; mocksDir?: string } = {},
 ): Promise<SeedResult> {
   const log = options.log ?? (() => undefined);
-  const data = options.data ?? (await loadDemoData());
+  const data = options.data ?? (await loadDemoData(options.mocksDir));
 
   const { settingsCreated, adminCreated } = await ensureSettingsAndAdmin(prisma, data.settings, options);
   if (settingsCreated) log("Paramètres de la boutique créés.");
@@ -335,6 +345,8 @@ export async function seedDemo(
 
 async function main() {
   const force = process.argv.includes("--force");
+  const mocksFlag = process.argv.indexOf("--mocks");
+  const mocksDir = mocksFlag >= 0 ? process.argv[mocksFlag + 1] : undefined;
   try {
     assertSeedAllowed(process.env.NODE_ENV, force);
   } catch (err) {
@@ -347,6 +359,7 @@ async function main() {
     const result = await seedDemo(prisma, {
       adminEmail: process.env.ADMIN_EMAIL,
       adminPassword: process.env.ADMIN_PASSWORD,
+      mocksDir,
       log: (m) => console.log(m),
     });
     if (result.skipped) {

@@ -1,5 +1,6 @@
 import { buildActivity, buildKpis, buildReport, buildSeries, buildStatusBreakdown, buildTopProducts } from "@fashion/shared";
 import type { AnalyticsPeriod } from "@fashion/types";
+import { resolve } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadDemoData, seedDemo } from "../prisma/seed-demo";
 import { getDashboard, getReport } from "../src/modules/analytics";
@@ -154,7 +155,7 @@ describe("analytics — tableau de bord", () => {
 
 describe("analytics — mêmes chiffres que l'interface mock sur les mêmes données", () => {
   it("rapport et tableau de bord identiques à `buildReport` & co. appliqués aux données de démonstration", async () => {
-    const demo = await loadDemoData();
+    const demo = await loadDemoData(resolve(__dirname, "../../web/src/mocks"));
     await seedDemo(prisma, { data: demo });
     const now = new Date();
     // Mêmes données, mêmes conventions de tri que l'API : commandes les plus récentes d'abord.

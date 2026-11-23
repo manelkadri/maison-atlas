@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { assertSeedAllowed, loadDemoData, seedDemo, type DemoData, type SeedResult } from "../prisma/seed-demo";
 import { adminAgent, http, prisma, resetDatabase } from "./helpers";
@@ -8,7 +9,7 @@ let first: SeedResult;
 
 beforeAll(async () => {
   await resetDatabase();
-  demo = await loadDemoData();
+  demo = await loadDemoData(resolve(__dirname, "../../web/src/mocks"));
   first = await seedDemo(prisma, { data: demo, adminEmail: "demo-owner@test.local", adminPassword: "mot-de-passe-de-demo-long" });
 });
 
