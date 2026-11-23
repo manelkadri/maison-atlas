@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import supertest from "supertest";
-import { createApp } from "../src/app";
+import { createApp } from "../src/create-app";
 import { prisma } from "../src/config/db";
 
 export const ADMIN = { email: "owner@test.local", password: "correct-horse-battery-staple" } as const;

@@ -1,4 +1,4 @@
-import { createApp } from "./app";
+import { createApp } from "./create-app";
 import { prisma } from "./config/db";
 import { env } from "./config/env";
 

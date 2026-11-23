@@ -1,0 +1,8 @@
+{
+  // Configuration du BUILD de production : seul le code déployé est vérifié (src/). Les tests, scripts et seeds
+  // sont vérifiés par `pnpm typecheck` (tsconfig.json). Mêmes options strictes que tsconfig.json, rien n'est assoupli.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "noEmit": true },
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

@@ -13,5 +13,7 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["src", "scripts", "prisma", "tests", "vitest.config.ts"]
+  "include": ["src", "scripts", "prisma", "tests", "vitest.config.ts", "tsup.config.ts"],
+  // src/index.ts importe le bundle `dist/` (généré par tsup) : il est vérifié par tsconfig.build.json, après le bundling.
+  "exclude": ["node_modules", "dist", "src/index.ts"]
 }

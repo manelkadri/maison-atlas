@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "dev:db": "tsx scripts/dev-db.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "prisma generate --schema ../../prisma/schema.prisma && tsup && tsc -p tsconfig.build.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -16,7 +16,7 @@
     "db:migrate": "prisma migrate dev --schema ../../prisma/schema.prisma",
     "db:deploy": "prisma migrate deploy --schema ../../prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:demo": "tsx prisma/seed-demo.ts",
+    "db:seed:demo": "tsx prisma/seed-demo.ts --mocks ../web/src/mocks",
     "db:archive-men": "tsx prisma/archive-men.ts"
   },
   "dependencies": {
@@ -52,6 +52,7 @@
     "pg": "^8.23.1",
     "prisma": "^6.19.0",
     "supertest": "^7.1.4",
+    "tsup": "^8.5.1",
     "tsx": "^4.20.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.7"
