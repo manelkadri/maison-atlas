@@ -1,0 +1,23 @@
+{
+  "name": "fashion-ecommerce",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Plateforme e-commerce de vêtements (boutique + dashboard propriétaire) - Phase 1 : frontend",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.19.0",
+    "prisma": "^6.19.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @fashion/web dev",
+    "build": "pnpm --filter @fashion/web build",
+    "start": "pnpm --filter @fashion/web start",
+    "lint": "pnpm --filter @fashion/web lint",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm --filter @fashion/web test",
+    "test:e2e": "pnpm --filter @fashion/web test:e2e"
+  }
+}

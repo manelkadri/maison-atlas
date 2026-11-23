@@ -1,0 +1,276 @@
+// Schéma PostgreSQL de la plateforme (phase 2). Les montants sont des entiers en DZD (Int).
+// Il suit les types de `packages/types` mais le frontend reste indépendant de Prisma.
+// Contraintes que Prisma ne sait pas exprimer : voir prisma/sql/constraints.sql (appliqué après chaque migration).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+  women
+  men
+  unisex
+}
+
+enum CategoryKind {
+  category
+  collection
+}
+
+enum OrderStatus {
+  pending
+  confirmed
+  processing
+  shipped
+  delivered
+  cancelled
+  rejected
+  delivery_failed
+  returned
+}
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+}
+
+enum DeliveryMethod {
+  home
+  pickup_point
+}
+
+enum StockMovementType {
+  in
+  out
+  adjustment
+  sale
+  return
+  initial
+}
+
+enum PromotionType {
+  percentage
+  fixed
+}
+
+model Category {
+  id           String       @id @default(cuid())
+  name         String
+  slug         String       @unique
+  description  String       @default("")
+  imageUrl     String       @default("")
+  kind         CategoryKind @default(category)
+  parentId     String?
+  parent       Category?    @relation("CategoryTree", fields: [parentId], references: [id])
+  children     Category[]   @relation("CategoryTree")
+  displayOrder Int          @default(0)
+  isArchived   Boolean      @default(false)
+  createdAt    DateTime     @default(now())
+  products     Product[]
+}
+
+model Product {
+  id             String         @id @default(cuid())
+  reference      String         @unique
+  name           String
+  slug           String         @unique
+  description    String
+  categoryId     String
+  category       Category       @relation(fields: [categoryId], references: [id])
+  gender         Gender         @default(unisex)
+  tags           String[]
+  price          Int
+  costPrice      Int
+  compareAtPrice Int?
+  soldCount      Int            @default(0)
+  isFeatured     Boolean        @default(false)
+  isPublished    Boolean        @default(false)
+  isArchived     Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  images         ProductImage[]
+  variants       ProductVariant[]
+  orderItems     OrderItem[]
+
+  @@index([categoryId])
+  @@index([isPublished, isArchived])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String  @default("")
+  color     String?
+  position  Int     @default(0)
+}
+
+model ProductVariant {
+  id             String          @id @default(cuid())
+  productId      String
+  product        Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  sku            String          @unique
+  color          String
+  colorCode      String
+  size           String
+  price          Int
+  stock          Int             @default(0)
+  alertThreshold Int             @default(3)
+  movements      StockMovement[]
+  orderItems     OrderItem[]
+
+  // TODO migration SQL manuelle : CHECK (stock >= 0) — Prisma ne sait pas l'exprimer.
+  @@unique([productId, color, size])
+}
+
+model StockMovement {
+  id             String            @id @default(cuid())
+  variantId      String
+  variant        ProductVariant    @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  type           StockMovementType
+  quantityDelta  Int
+  quantityBefore Int
+  quantityAfter  Int
+  reason         String
+  reference      String?
+  createdAt      DateTime          @default(now())
+
+  @@index([variantId, createdAt])
+}
+
+model Customer {
+  id        String   @id @default(cuid())
+  firstName String
+  lastName  String
+  phone     String
+  /// Téléphone normalisé (chiffres, format national 05XXXXXXXX) : clé d'unicité d'un client.
+  phoneKey  String   @unique
+  email     String?
+  wilayaCode String
+  commune   String
+  address   String   @default("")
+  isGuest   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model Order {
+  id              String         @id @default(cuid())
+  /// Compteur séquentiel (le numéro lisible CMD-AAAA-NNNNNN en est dérivé).
+  sequence        Int            @unique @default(autoincrement())
+  orderNumber     String         @unique
+  customerId      String?
+  customer        Customer?      @relation(fields: [customerId], references: [id])
+  // Instantané des coordonnées au moment de la commande (commande invité autorisée).
+  customerFirstName String
+  customerLastName  String
+  customerPhone     String
+  customerEmail     String?
+  wilayaCode      String
+  wilayaName      String
+  commune         String
+  address         String         @default("")
+  deliveryMethod  DeliveryMethod
+  pickupPointId   String?
+  pickupPointName String?
+  subtotal        Int
+  discountTotal   Int            @default(0)
+  promoCode       String?
+  shippingFee     Int
+  total           Int
+  paymentMethod   String         @default("cash_on_delivery")
+  paymentStatus   PaymentStatus  @default(pending)
+  status          OrderStatus    @default(pending)
+  customerNote    String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  items           OrderItem[]
+  history         OrderStatusEvent[]
+
+  @@index([status, createdAt])
+}
+
+model OrderItem {
+  id          String         @id @default(cuid())
+  orderId     String
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product        @relation(fields: [productId], references: [id])
+  variantId   String
+  variant     ProductVariant @relation(fields: [variantId], references: [id])
+  // Valeurs figées à l'achat (règle métier n°6).
+  productName String
+  productSlug String
+  colorCode   String
+  imageUrl    String         @default("")
+  sku         String
+  color       String
+  size        String
+  unitPrice   Int
+  unitCost    Int
+  quantity    Int
+  lineTotal   Int
+}
+
+model OrderStatusEvent {
+  id        String      @id @default(cuid())
+  orderId   String
+  order     Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status    OrderStatus
+  note      String?
+  createdAt DateTime    @default(now())
+}
+
+model Promotion {
+  id             String        @id @default(cuid())
+  code           String        @unique
+  label          String
+  type           PromotionType
+  value          Int
+  startsAt       DateTime
+  endsAt         DateTime
+  minOrderAmount Int           @default(0)
+  isActive       Boolean       @default(true)
+  usageCount     Int           @default(0)
+  createdAt      DateTime      @default(now())
+}
+
+/// Paramètres de la boutique : une seule ligne (un seul magasin).
+model StoreSettings {
+  id                    Int    @id @default(1)
+  storeName             String
+  tagline               String @default("")
+  logoUrl               String @default("")
+  phone                 String
+  email                 String
+  address               String
+  openingHours          String @default("")
+  plusCode              String @default("")
+  whatsapp              String @default("")
+  social                Json
+  shippingFees          Json
+  freeShippingThreshold Int    @default(0)
+  defaultAlertThreshold Int    @default(3)
+}
+
+/// Propriétaire unique (administrateur).
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+/// Abonnés à la newsletter (e-mail unique).
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}

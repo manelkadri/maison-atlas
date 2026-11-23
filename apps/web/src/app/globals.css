@@ -1,0 +1,285 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ==========================================================================
+   DESIGN SYSTEM — tokens centralisés
+   Palette : ivoire / beige / noir profond / brun taupe.
+   Tous les composants lisent ces variables ; ne jamais coder de couleur en dur.
+   ========================================================================== */
+:root {
+  --radius: 0.375rem;
+
+  /* Surfaces */
+  --background: #faf8f4; /* ivoire */
+  --background-secondary: #f3eee6; /* beige très clair */
+  --card: #ffffff;
+  --card-foreground: #171412;
+  --popover: #ffffff;
+  --popover-foreground: #171412;
+
+  /* Texte */
+  --foreground: #171412; /* noir profond */
+  --muted-foreground: #6e675f; /* gris élégant (contraste AA sur ivoire) */
+
+  /* Actions */
+  --primary: #171412;
+  --primary-foreground: #faf8f4;
+  --secondary: #f3eee6;
+  --secondary-foreground: #171412;
+  --muted: #f3eee6;
+  --accent: #efe8dd;
+  --accent-foreground: #171412;
+
+  /* Marque */
+  --brand: #6b5444; /* brun taupe */
+  --brand-foreground: #ffffff;
+  --brand-soft: #e9dfd3;
+
+  /* Statuts */
+  --success: #3f7a4f;
+  --success-soft: #e6f0e8;
+  --warning: #b8700f;
+  --warning-soft: #faefd9;
+  --destructive: #b3392f;
+  --destructive-soft: #f8e5e2;
+  --info: #3c5f84;
+  --info-soft: #e4ecf4;
+  --whatsapp: #1fa855; /* vert WhatsApp assombri : contraste suffisant avec le glyphe blanc */
+
+  /* Bordures & focus */
+  --border: #e6e0d6;
+  --input: #d9d2c6;
+  --ring: #6b5444;
+
+  /* Graphiques */
+  --chart-1: #6b5444;
+  --chart-2: #3f7a4f;
+  --chart-3: #b8700f;
+  --chart-4: #3c5f84;
+  --chart-5: #b3392f;
+
+  --sidebar: #171412;
+  --sidebar-foreground: #e9e3d9;
+  --sidebar-primary: #d9c3a8;
+  --sidebar-primary-foreground: #171412;
+  --sidebar-accent: #2a2522;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #2e2926;
+  --sidebar-ring: #d9c3a8;
+}
+
+/* Identité visuelle du dashboard : plus dense, fond neutre froid, sidebar sombre. */
+/* `:root:has(...)` : les portails Radix (dialogues, menus) sont rendus dans <body>, hors du wrapper admin ;
+   ils doivent hériter du thème admin aussi. */
+:root:has([data-theme="admin"]),
+[data-theme="admin"] {
+  --background: #f5f5f3;
+  --background-secondary: #ecebe8;
+  --card: #ffffff;
+  --muted: #f0efec;
+  --accent: #ecebe7;
+  --border: #e4e2dd;
+  --input: #d6d3cc;
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-background-secondary: var(--background-secondary);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-soft: var(--brand-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-destructive: var(--destructive);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-whatsapp: var(--whatsapp);
+
+  --animate-whatsapp-ring: whatsapp-ring 2.4s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+  --animate-whatsapp-wiggle: whatsapp-wiggle 5s ease-in-out infinite;
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 6px);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+
+  --container-store: 80rem;
+
+  --ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  /* Les titres de la boutique utilisent la serif ; le dashboard reste en sans-serif. */
+  .font-display {
+    font-family: var(--font-serif);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  :root:has([data-theme="admin"]) .font-display {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .container-store {
+    @apply mx-auto w-full max-w-store px-4 sm:px-6 lg:px-10;
+  }
+  .eyebrow {
+    @apply text-xs font-medium tracking-[0.2em] text-muted-foreground uppercase;
+  }
+  /* Révélation discrète au chargement */
+  .reveal {
+    animation: reveal 0.7s var(--ease-premium) both;
+  }
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes whatsapp-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  80%,
+  100% {
+    transform: scale(1.7);
+    opacity: 0;
+  }
+}
+
+@keyframes whatsapp-wiggle {
+  0%,
+  78%,
+  100% {
+    transform: rotate(0);
+  }
+  82% {
+    transform: rotate(-12deg);
+  }
+  86% {
+    transform: rotate(10deg);
+  }
+  90% {
+    transform: rotate(-8deg);
+  }
+  94% {
+    transform: rotate(5deg);
+  }
+}
+
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Impression du bon de commande (dashboard) */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    inset: 0;
+    background: #fff;
+    color: #000;
+    padding: 24px;
+  }
+  .no-print {
+    display: none !important;
+  }
+}

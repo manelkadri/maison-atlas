@@ -1,0 +1,17 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# magic-string 1.x est ESM pur : @tailwindcss/node le charge via require(), ce qui exige Node >= 20.19.
+# On reste sur la série 0.30 (CJS + ESM) pour supporter Node 20.9+.
+overrides:
+  magic-string: "0.30.21"
+
+onlyBuiltDependencies:
+  - sharp
+  - prisma
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@embedded-postgres/windows-x64'
+  - esbuild
+  - unrs-resolver
