@@ -37,7 +37,7 @@ export function createApp(): Express {
 
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   if (env.UPLOAD_DRIVER === "local") {
-    app.use("/uploads", express.static(resolve(process.cwd(), env.UPLOAD_DIR), { maxAge: "7d", index: false, dotfiles: "deny" }));
+    app.use("/uploads", express.static(resolve(env.UPLOAD_DIR), { maxAge: "7d", index: false, dotfiles: "deny" }));
   }
 
   app.use("/api", csrfOriginCheck, publicRouter);

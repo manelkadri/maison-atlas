@@ -31,3 +31,5 @@ apps/api/dist
 # Production (contient des mots de passe)
 .env.production
 apps/api/.env.production
+
+apps/api/.pgdata.log.ctl

@@ -22,7 +22,7 @@ export const generateBaseName = () => randomBytes(16).toString("hex");
 
 /** Driver « local » (développement) : écrit dans UPLOAD_DIR, servi par l'application sur /uploads. */
 export function createLocalDriver(dir: string): UploadDriver {
-  const root = resolve(process.cwd(), dir);
+  const root = resolve(dir);
   return {
     name: "local",
     async save({ buffer, kind, baseName }) {
