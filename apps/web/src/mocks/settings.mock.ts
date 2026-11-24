@@ -9,7 +9,7 @@ export const settingsMock: StoreSettings = {
   phone: "0552 82 60 75",
   email: "contact@ali-prestige.example",
   address: "mizan, Rue, Aïn Témouchent 46000",
-  openingHours: "Ouvert tous les jours · fermeture à 20h30",
+  openingHours: "Ouvert tous les jours sauf le vendredi · de 9h00 à 19h00",
   plusCode: "8V36+H8 Aïn Témouchent",
   whatsapp: "0552 82 60 75",
   // Liens nettoyés de leurs paramètres de suivi (?gwpx=…, ?_r=…&_t=…) : ils mènent aux mêmes profils.

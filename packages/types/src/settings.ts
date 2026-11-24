@@ -12,7 +12,7 @@ export type StoreSettings = {
   phone: string;
   email: string;
   address: string;
-  /** Horaires d'ouverture, texte libre affiché sur la boutique (ex. « Tous les jours : 9h00 – 20h30 »). */
+  /** Horaires d'ouverture, texte libre affiché sur la boutique (ex. « Ouvert tous les jours sauf le vendredi · de 9h00 à 19h00 »). */
   openingHours: string;
   /** Plus Code Google Maps (ex. « 8V36+H8 Aïn Témouchent »). Sert à placer la carte ; à défaut, l'adresse est utilisée. */
   plusCode: string;

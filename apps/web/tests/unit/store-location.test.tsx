@@ -44,7 +44,7 @@ describe("<StoreLocation />", () => {
       </QueryClientProvider>,
     );
     expect(screen.getByText("mizan, Rue, Aïn Témouchent 46000")).toBeInTheDocument();
-    expect(screen.getByText(/fermeture à 20h30/i)).toBeInTheDocument();
+    expect(screen.getByText(/sauf le vendredi · de 9h00 à 19h00/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "0552 82 60 75" })).toHaveAttribute("href", "tel:0552826075");
     const map = screen.getByTitle(/Carte : emplacement/);
     expect(map).toHaveAttribute("src", expect.stringContaining("google.com/maps"));

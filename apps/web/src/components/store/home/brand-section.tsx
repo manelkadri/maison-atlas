@@ -15,7 +15,7 @@ export function BrandSection() {
     <section aria-labelledby="home-brand" className="container-store py-16 sm:py-24">
       <div className="grid items-center gap-10 lg:grid-cols-2 lg:gap-20">
         <div className="bg-secondary relative aspect-[4/5] overflow-hidden rounded-sm lg:aspect-[5/6]">
-          <Image src="/images/brand.svg" alt={`L'univers ${siteConfig.name} : matières naturelles et tons neutres`} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover" />
+          <Image src="/images/brand.jpg" alt={`Intérieur de la boutique ${siteConfig.name} : vêtements et accessoires pour femme`} fill sizes="(min-width:1024px) 50vw, 100vw" className="object-cover object-[48%_center]" />
         </div>
         <div>
           <p className="eyebrow">La maison</p>

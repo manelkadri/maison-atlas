@@ -1,6 +1,7 @@
 /** Configuration statique du site (le contenu éditable par le propriétaire vit dans StoreSettings). */
 export const siteConfig = {
-  name: process.env.NEXT_PUBLIC_STORE_NAME ?? "Ali Prestige",
+  /** Nom de la boutique : constant (titre de l'onglet, métadonnées). Le nom affiché dans l'en-tête se modifie dans Admin > Paramètres. */
+  name: "Ali Prestige",
   description:
     "Prêt-à-porter féminin et accessoires. Paiement à la livraison, livraison à domicile ou en bureau partout en Algérie.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
