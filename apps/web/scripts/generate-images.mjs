@@ -1,5 +1,5 @@
 /**
- * Génère toutes les images de démonstration (SVG) de la boutique Maison Atlas :
+ * Génère toutes les images de démonstration (SVG) de la boutique Ali Prestige :
  *   public/images/products/{slug}/{couleur}-{1|2}.svg
  *   public/images/categories/{slug}.svg
  *   public/images/hero.svg, promo.svg, brand.svg

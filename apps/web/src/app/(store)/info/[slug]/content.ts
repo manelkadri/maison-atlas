@@ -30,8 +30,8 @@ export const INFO_PAGES: InfoPage[] = [
   {
     slug: "a-propos",
     title: "À propos de nous",
-    description: "Maison Atlas, boutique de prêt-à-porter féminin et d'accessoires à Aïn Témouchent. Paiement à la livraison partout en Algérie.",
-    intro: "Maison Atlas est une boutique de prêt-à-porter féminin et d'accessoires, installée à Aïn Témouchent et ouverte à toute l'Algérie.",
+    description: "Ali Prestige, boutique de prêt-à-porter féminin et d'accessoires à Aïn Témouchent. Paiement à la livraison partout en Algérie.",
+    intro: "Ali Prestige est une boutique de prêt-à-porter féminin et d'accessoires, installée à Aïn Témouchent et ouverte à toute l'Algérie.",
     sections: [
       {
         heading: "Notre boutique",
@@ -156,7 +156,7 @@ export const INFO_PAGES: InfoPage[] = [
     slug: "guide-des-tailles",
     title: "Guide des tailles",
     description: "Tableau de correspondance des tailles et conseils pour prendre vos mesures.",
-    intro: "Trouvez votre taille en comparant vos mensurations aux tableaux ci-dessous. En cas d'hésitation entre deux tailles, prenez la plus grande pour un tombé plus confortable.",
+    intro: "Trouvez votre taille en comparant vos mensurations au tableau ci-dessous. En cas d'hésitation entre deux tailles, prenez la plus grande pour un tombé plus confortable.",
     sections: [
       {
         heading: "Comment prendre ses mesures",
@@ -186,23 +186,6 @@ export const INFO_PAGES: InfoPage[] = [
               ["L", "42", "92 – 96", "74 – 78", "98 – 102"],
               ["XL", "44", "96 – 102", "78 – 84", "102 – 108"],
               ["XXL", "46", "102 – 108", "84 – 90", "108 – 114"],
-            ],
-          },
-        ],
-      },
-      {
-        heading: "Homme",
-        blocks: [
-          {
-            type: "table",
-            caption: "Tailles homme (mesures du corps, en centimètres)",
-            head: ["Taille", "Équivalent numérique", "Poitrine", "Taille (tour)", "Hanches"],
-            rows: [
-              ["S", "44", "88 – 94", "76 – 82", "92 – 98"],
-              ["M", "46", "94 – 100", "82 – 88", "98 – 104"],
-              ["L", "48", "100 – 106", "88 – 94", "104 – 110"],
-              ["XL", "50", "106 – 112", "94 – 100", "110 – 116"],
-              ["XXL", "52", "112 – 118", "100 – 106", "116 – 122"],
             ],
           },
         ],

@@ -1,4 +1,4 @@
-# Maison Atlas — Plateforme e-commerce de vêtements
+# Ali Prestige — Plateforme e-commerce de vêtements
 
 Boutique en ligne + dashboard propriétaire dans un même site, pour une boutique de vêtements algérienne
 (un seul magasin, un seul administrateur, paiement à la livraison, prix en DZD).

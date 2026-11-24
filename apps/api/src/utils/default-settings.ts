@@ -5,11 +5,11 @@ import type { StoreSettings } from "@fashion/types";
  * Utilisées seulement si la ligne `StoreSettings` n'existe pas encore en base.
  */
 export const DEFAULT_SETTINGS: StoreSettings = {
-  storeName: "Maison Atlas",
+  storeName: "Ali Prestige",
   tagline: "Prêt-à-porter essentiel, livré partout en Algérie.",
   logoUrl: "",
   phone: "0552 82 60 75",
-  email: "contact@maison-atlas.example",
+  email: "contact@ali-prestige.example",
   address: "mizan, Rue, Aïn Témouchent 46000",
   openingHours: "Ouvert tous les jours · fermeture à 20h30",
   plusCode: "8V36+H8 Aïn Témouchent",

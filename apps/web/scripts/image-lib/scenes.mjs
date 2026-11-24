@@ -118,7 +118,7 @@ export function heroSvg() {
     `<rect x="0" y="1010" width="1600" height="190" fill="#e4d9c6"/>` +
     `<rect x="0" y="1010" width="1600" height="3" fill="#cdbfa6"/>` +
     `<ellipse cx="1220" cy="1030" rx="420" ry="30" fill="#5a4130" fill-opacity=".16" filter="url(#soft2)"/>`;
-  return svgDoc({ w: 1600, h: 1200, bg, defs, content: deco + content, label: "Maison Atlas" });
+  return svgDoc({ w: 1600, h: 1200, bg, defs, content: deco + content, label: "Ali Prestige" });
 }
 
 /* ------------------------------------------------------------------ promo 1600 x 900 */
@@ -200,14 +200,14 @@ export function brandSvg() {
   for (const [x, y, a] of [[300, 760, -20], [350, 790, 12], [330, 840, -4]]) {
     s += `<g transform="translate(${x} ${y}) rotate(${a})"><path d="M0 0V86" stroke="#9b958a" stroke-width="3.4"/><circle cx="0" cy="-3" r="8" fill="#a2522f"/></g>`;
   }
-  return svgDoc({ w: 1200, h: 1500, bg, content: s, label: "Atelier Maison Atlas" });
+  return svgDoc({ w: 1200, h: 1500, bg, content: s, label: "Atelier Ali Prestige" });
 }
 
 /* ------------------------------------------------------------------ icône (favicon) */
 
 export function iconSvg() {
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Maison Atlas">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="Ali Prestige">` +
     `<rect width="64" height="64" rx="14" fill="#171412"/>` +
     `<path d="M16 50L32 14L48 50" fill="none" stroke="#faf8f4" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>` +
     `<path d="M24 41V37a8 8 0 0 1 16 0V41" fill="none" stroke="#faf8f4" stroke-width="3.4" stroke-linecap="round"/>` +
@@ -235,5 +235,5 @@ export function ogSvg() {
     `<rect x="86" y="410" width="72" height="3" fill="#6b5444"/>` +
     `<text x="86" y="458" font-size="24" fill="#6b5444" letter-spacing="3">Vêtements pour elle et lui</text>` +
     `</g>`;
-  return svgDoc({ w: 1200, h: 630, bg, defs, content: deco + content + text, label: "Maison Atlas" });
+  return svgDoc({ w: 1200, h: 630, bg, defs, content: deco + content + text, label: "Ali Prestige" });
 }

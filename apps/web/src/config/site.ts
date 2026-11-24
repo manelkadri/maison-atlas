@@ -1,6 +1,6 @@
 /** Configuration statique du site (le contenu éditable par le propriétaire vit dans StoreSettings). */
 export const siteConfig = {
-  name: process.env.NEXT_PUBLIC_STORE_NAME ?? "Maison Atlas",
+  name: process.env.NEXT_PUBLIC_STORE_NAME ?? "Ali Prestige",
   description:
     "Prêt-à-porter féminin et accessoires. Paiement à la livraison, livraison à domicile ou en bureau partout en Algérie.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",

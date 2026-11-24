@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { BrandSection } from "@/components/store/home/brand-section";
 import { CategoryShowcase } from "@/components/store/home/category-showcase";
 import { Hero } from "@/components/store/home/hero";
-import { LocationSection } from "@/components/store/home/location-section";
 import { NewsletterSection } from "@/components/store/home/newsletter-section";
 import { ProductSection } from "@/components/store/home/product-section";
 import { PromoBanner } from "@/components/store/home/promo-banner";
@@ -57,7 +56,6 @@ export default async function HomePage() {
       />
       <PromoBanner />
       <BrandSection />
-      <LocationSection />
       <NewsletterSection />
     </>
   );
