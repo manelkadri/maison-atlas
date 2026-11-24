@@ -7,6 +7,7 @@ import { THROTTLE } from "../../config/customer-auth";
 import { AppError, unauthenticated, validation } from "../../utils/errors";
 import { recordAudit } from "../../utils/audit";
 import { createCustomerSession } from "../../utils/customer-session";
+import { ipLimitKey, subnetLimitKey } from "../../utils/ip";
 import { hashPassword, verifyPassword } from "../../utils/password";
 import { purgeExpiredAuthData } from "../../utils/purge";
 import { clearThrottle, consumeAttempt, getLock, recordFailure, throttleKey } from "../../utils/throttle";
@@ -30,7 +31,12 @@ export const REGISTER_UNAVAILABLE =
 type RequestContext = { ip: string; userAgent?: string };
 
 const minutes = (seconds: number) => Math.max(1, Math.ceil(seconds / 60));
-export const wait = (seconds: number) => `Réessayez dans ${minutes(seconds)} minute${minutes(seconds) > 1 ? "s" : ""}.`;
+export const wait = (seconds: number) => {
+  const m = minutes(seconds);
+  if (m < 90) return `Réessayez dans ${m} minute${m > 1 ? "s" : ""}.`;
+  const h = Math.round(m / 60);
+  return `Réessayez dans environ ${h} heure${h > 1 ? "s" : ""}.`;
+};
 
 /** 429 avec la durée d'attente (`Retry-After` est posé par le gestionnaire d'erreurs). */
 export const tooManyAttempts = (message: string, retryAfterSeconds: number) => new AppError(429, "RATE_LIMITED", message, { retryAfterSeconds });
@@ -58,10 +64,56 @@ async function purgeQuietly(): Promise<void> {
   }
 }
 
+/**
+ * Budgets d'INSCRIPTION (seuils : voir `THROTTLE` dans config/customer-auth.ts). Une tentative consomme, du plus étroit au plus
+ * large, un compteur atomique par IP/heure, IP/jour, sous-réseau/jour, global/heure, global/jour. La première limite atteinte
+ * répond 429 et les suivantes ne sont pas entamées. Appelée AVANT toute vérification d'existence du numéro : le comptage est donc
+ * identique pour un numéro neuf et pour un numéro déjà inscrit. Les messages ne dépendent jamais de l'état du numéro.
+ */
+async function enforceRegistrationLimits(ip: string): Promise<void> {
+  const own = `Trop de créations de compte depuis cette connexion.`;
+  const shared = `Les inscriptions sont momentanément indisponibles.`;
+  const steps = [
+    { cfg: THROTTLE.registerIp, key: ipLimitKey(ip), message: own, signal: false },
+    { cfg: THROTTLE.registerIpDay, key: ipLimitKey(ip), message: own, signal: false },
+    { cfg: THROTTLE.registerSubnetDay, key: subnetLimitKey(ip), message: shared, signal: true },
+    { cfg: THROTTLE.registerGlobalHour, key: "all", message: shared, signal: true },
+    { cfg: THROTTLE.registerGlobalDay, key: "all", message: shared, signal: true },
+  ] as const;
+  for (const step of steps) {
+    const result = await consumeAttempt(step.cfg.scope, step.key, step.cfg);
+    if (result.allowed) continue;
+    // Signal d'un sondage possible : écrit UNE seule fois par fenêtre (le compteur atomique passe une seule fois par max + 1).
+    if (step.signal && result.count === step.cfg.max + 1) {
+      try {
+        await recordAudit(prisma, { action: "customer.register_limit_reached", actor: { type: "system" }, ip, metadata: { limit: step.cfg.scope } });
+      } catch {
+        /* le signal ne doit pas changer la réponse */
+      }
+    }
+    throw tooManyAttempts(`${step.message} ${wait(result.retryAfterSeconds)}`, result.retryAfterSeconds);
+  }
+}
+
+/** Journalise une tentative d'inscription sur un numéro déjà inscrit (au mieux : sans effet sur la réponse). */
+async function auditRegisterDuplicate(phoneKey: string, ip: string, known?: { id: string; isGuest: boolean } | null): Promise<void> {
+  try {
+    const existing = known ?? (await prisma.customer.findUnique({ where: { phoneKey }, select: { id: true, isGuest: true } }));
+    await recordAudit(prisma, {
+      action: "customer.register_duplicate",
+      actor: { type: "system" },
+      target: existing ? { type: "customer", id: existing.id } : undefined,
+      ip,
+      metadata: { legacy: existing?.isGuest ?? false },
+    });
+  } catch {
+    /* voir ci-dessus */
+  }
+}
+
 export async function registerCustomer(input: CustomerRegisterValues, ctx: RequestContext): Promise<{ customer: CustomerAccount; token: string; expiresAt: Date }> {
-  // 1) limite par IP, avant tout autre traitement (borne aussi le sondage des numéros déjà inscrits)
-  const ip = await consumeAttempt(THROTTLE.registerIp.scope, ctx.ip, THROTTLE.registerIp);
-  if (!ip.allowed) throw tooManyAttempts(`Trop de créations de compte depuis cette connexion. ${wait(ip.retryAfterSeconds)}`, ip.retryAfterSeconds);
+  // 1) budgets d'inscription (IP, sous-réseau, global), avant tout autre traitement : bornent le sondage des numéros déjà inscrits
+  await enforceRegistrationLimits(ctx.ip);
 
   // 2) contrôles qui dépendent du serveur
   if (!getWilaya(input.wilayaCode)) throw validation("La wilaya choisie est invalide.");
@@ -71,8 +123,11 @@ export async function registerCustomer(input: CustomerRegisterValues, ctx: Reque
   // 3) le hachage est calculé AVANT de regarder si le numéro existe : même temps de réponse dans les deux cas
   const passwordHash = await hashPassword(input.password);
 
-  const existing = await prisma.customer.findUnique({ where: { phoneKey }, select: { id: true } });
-  if (existing) throw new AppError(409, "CONFLICT", REGISTER_UNAVAILABLE);
+  const existing = await prisma.customer.findUnique({ where: { phoneKey }, select: { id: true, isGuest: true } });
+  if (existing) {
+    await auditRegisterDuplicate(phoneKey, ctx.ip, existing);
+    throw new AppError(409, "CONFLICT", REGISTER_UNAVAILABLE);
+  }
 
   try {
     const now = new Date();
@@ -100,7 +155,10 @@ export async function registerCustomer(input: CustomerRegisterValues, ctx: Reque
     return { customer: toCustomerAccount(created.customer), token: created.session.token, expiresAt: created.session.expiresAt };
   } catch (error) {
     // Course entre deux inscriptions du même numéro : même réponse que le doublon détecté plus haut.
-    if (typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002") throw new AppError(409, "CONFLICT", REGISTER_UNAVAILABLE);
+    if (typeof error === "object" && error !== null && (error as { code?: string }).code === "P2002") {
+      await auditRegisterDuplicate(phoneKey, ctx.ip);
+      throw new AppError(409, "CONFLICT", REGISTER_UNAVAILABLE);
+    }
     throw error;
   }
 }

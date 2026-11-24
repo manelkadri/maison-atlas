@@ -1,6 +1,6 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { makeProduct, orderBody } from "./api2-factories";
-import { adminAgent, http, prisma, resetDatabase } from "./helpers";
+import { adminAgent, customerAgent, http, prisma, resetDatabase } from "./helpers";
 
 type Agent = Awaited<ReturnType<typeof adminAgent>>;
 let admin: Agent;
@@ -232,7 +232,8 @@ describe("suppression définitive", () => {
     const child = await create({ slug: "robe", name: "Robe", parentId: parent.id });
     const ordered = await makeProduct({ categoryId: child.id, variants: [{ stock: 5 }] });
     await makeProduct({ categoryId: child.id });
-    await http().post("/api/orders").send(orderBody([{ variantId: ordered.variants[0]!.id, quantity: 1 }])).expect(201);
+    const buyer = await customerAgent();
+    await buyer.agent.post("/api/orders").send(orderBody([{ variantId: ordered.variants[0]!.id, quantity: 1 }])).expect(201);
 
     const impact = await admin.get(`/api/admin/categories/${parent.id}/deletion-impact`);
     expect(impact.body).toEqual({ subcategories: 1, products: 2, orderedProducts: 1 });

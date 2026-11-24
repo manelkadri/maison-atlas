@@ -110,3 +110,39 @@ export type CustomerOrder = Omit<Order, "items" | "statusHistory"> & {
   items: CustomerOrderItem[];
   statusHistory: CustomerOrderStatusEvent[];
 };
+
+/**
+ * Réponse du SUIVI PUBLIC d'une commande (numéro + téléphone) : le strict nécessaire pour suivre sa commande.
+ * Volontairement SANS : identifiants internes (commande, client, produit, variante, SKU), prix de revient, notes internes de
+ * l'administration, nom de famille, téléphone, e-mail, adresse postale, note de la cliente.
+ * Construite champ par champ (liste blanche) : un champ ajouté plus tard à `Order` n'apparaît JAMAIS ici automatiquement.
+ */
+export type PublicTrackedOrder = {
+  orderNumber: string;
+  status: OrderStatus;
+  statusHistory: Array<{ status: OrderStatus; at: string }>;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  /** Prénom seulement. */
+  customer: { firstName: string };
+  /** Wilaya et commune seulement (pas la rue). */
+  shippingAddress: { wilayaName: string; commune: string; deliveryMethod: DeliveryMethod; pickupPointName?: string };
+  items: Array<{
+    productName: string;
+    productSlug: string;
+    color: string;
+    colorCode: string;
+    size: string;
+    imageUrl: string;
+    unitPrice: number;
+    quantity: number;
+    lineTotal: number;
+  }>;
+  subtotal: number;
+  discountTotal: number;
+  promoCode?: string;
+  shippingFee: number;
+  total: number;
+  createdAt: string;
+  updatedAt: string;
+};

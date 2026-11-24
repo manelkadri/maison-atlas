@@ -1,10 +1,16 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { adminAgent, http, prisma, resetDatabase } from "./helpers";
+import { adminAgent, customerAgent, http, prisma, resetDatabase } from "./helpers";
 import { makeProduct, orderBody, stockOf } from "./api2-factories";
 
-beforeEach(resetDatabase);
+type CustomerHttp = Awaited<ReturnType<typeof customerAgent>>;
+let me: CustomerHttp; // la cliente connectée qui passe les commandes de ce fichier (la commande exige une session)
 
-const post = (body: unknown) => http().post("/api/orders").send(body as object);
+beforeEach(async () => {
+  await resetDatabase();
+  me = await customerAgent();
+});
+
+const post = (body: unknown) => me.agent.post("/api/orders").send(body as object);
 
 describe("POST /api/orders — création nominale", () => {
   it("crée la commande, fige les prix, décrémente le stock et historise", async () => {
@@ -29,9 +35,12 @@ describe("POST /api/orders — création nominale", () => {
     expect(order.statusHistory).toHaveLength(1);
     expect(order.statusHistory[0].status).toBe("pending");
 
-    // Lignes figées : prix, coût, nom, SKU, image.
+    // Lignes figées : prix, nom, SKU, image. Le PRIX DE REVIENT est figé en base mais n'est JAMAIS renvoyé à la cliente.
     expect(order.items).toHaveLength(2);
-    expect(order.items[0]).toMatchObject({ variantId: v1!.id, unitPrice: 10_000, unitCost: 4_000, quantity: 2, lineTotal: 20_000, sku: v1!.sku, productName: product.name });
+    expect(order.items[0]).toMatchObject({ variantId: v1!.id, unitPrice: 10_000, quantity: 2, lineTotal: 20_000, sku: v1!.sku, productName: product.name });
+    expect(JSON.stringify(order)).not.toContain("unitCost");
+    const stored = await prisma.orderItem.findMany({ where: { orderId: order.id } });
+    expect(stored.every((row) => row.unitCost === 4_000)).toBe(true);
     expect(order.items[0].imageUrl).toContain("/img/");
     expect(order.items[1]).toMatchObject({ variantId: v2!.id, unitPrice: 12_000, lineTotal: 12_000 });
 
@@ -96,44 +105,58 @@ describe("POST /api/orders — création nominale", () => {
   });
 });
 
-describe("POST /api/orders — client", () => {
-  it("crée un client invité, puis réutilise la fiche pour le même téléphone (formats différents)", async () => {
+describe("POST /api/orders — rattachement à la cliente connectée", () => {
+  it("rattache la commande au compte de la SESSION, quel que soit le téléphone saisi comme coordonnée de livraison", async () => {
     const product = await makeProduct({ variants: [{ stock: 10 }] });
     const id = product.variants[0]!.id;
+    const customersBefore = await prisma.customer.count();
 
     const first = await post(orderBody([{ variantId: id, quantity: 1 }]));
     expect(first.status).toBe(201);
-    expect(first.body.customer.customerId).toBeTruthy();
-    const customers = await prisma.customer.findMany();
-    expect(customers).toHaveLength(1);
-    expect(customers[0]).toMatchObject({ phoneKey: "0555123456", isGuest: true });
+    expect(first.body.customer.customerId).toBe(me.customer.id);
 
-    const second = await post(
-      orderBody([{ variantId: id, quantity: 1 }], { customer: { firstName: "Autre", lastName: "Nom", phone: "+213 555 12 34 56" } }),
-    );
+    // On peut commander pour une proche : un autre nom et un autre numéro, au format international.
+    const second = await post(orderBody([{ variantId: id, quantity: 1 }], { customer: { firstName: "Sarah", lastName: "Proche", phone: "+213 661 00 00 09" } }));
     expect(second.status).toBe(201);
-    expect(second.body.customer.customerId).toBe(first.body.customer.customerId);
-    expect(await prisma.customer.count()).toBe(1);
-    // L'instantané de la commande garde les coordonnées saisies à ce moment-là.
-    expect(second.body.customer.firstName).toBe("Autre");
+    expect(second.body.customer.customerId).toBe(me.customer.id);
+    expect(second.body.customer).toMatchObject({ firstName: "Sarah", lastName: "Proche", phone: "+213 661 00 00 09" }); // instantané de livraison
+    expect(await prisma.customer.count()).toBe(customersBefore); // AUCUNE fiche client créée par une commande
   });
 
-  it("rattache la commande à un client existant (créé directement en base)", async () => {
-    const existing = await prisma.customer.create({
+  it("ne crée, ne retrouve et ne modifie JAMAIS la fiche d'une autre personne dont on saisit le numéro", async () => {
+    const other = await prisma.customer.create({
+      data: { firstName: "Yacine", lastName: "Merzouk", phone: "0661 00 00 01", phoneKey: "0661000001", wilayaCode: "31", commune: "Oran", address: "Rue d'Oran", isGuest: false },
+    });
+    const before = JSON.stringify(await prisma.customer.findUniqueOrThrow({ where: { id: other.id } }));
+    const product = await makeProduct({ variants: [{ stock: 10 }] });
+    const res = await post(
+      orderBody([{ variantId: product.variants[0]!.id, quantity: 1 }], {
+        customer: { firstName: "Intruse", lastName: "Autre", phone: "00213661000001", email: "intruse@example.com" },
+        shippingAddress: { wilayaCode: "16", commune: "Hydra", address: "Rue de l'intruse", deliveryMethod: "home" },
+      }),
+    );
+    expect(res.status).toBe(201);
+    expect(res.body.customer.customerId).toBe(me.customer.id); // pas celle de « Yacine »
+    expect(JSON.stringify(await prisma.customer.findUniqueOrThrow({ where: { id: other.id } }))).toBe(before);
+    expect(await prisma.order.count({ where: { customerId: other.id } })).toBe(0);
+  });
+
+  it("ignore tout identifiant de cliente fourni dans le corps de la requête", async () => {
+    const other = await prisma.customer.create({
       data: { firstName: "Yacine", lastName: "Merzouk", phone: "0661 00 00 01", phoneKey: "0661000001", wilayaCode: "31", commune: "Oran", isGuest: false },
     });
     const product = await makeProduct({ variants: [{ stock: 10 }] });
     const res = await post(
-      orderBody([{ variantId: product.variants[0]!.id, quantity: 1 }], { customer: { firstName: "Yacine", lastName: "Merzouk", phone: "00213661000001" } }),
+      orderBody([{ variantId: product.variants[0]!.id, quantity: 1 }], { customerId: other.id, customer: { firstName: "Ab", lastName: "Bb", phone: "0555 12 34 56", customerId: other.id } }),
     );
     expect(res.status).toBe(201);
-    expect(res.body.customer.customerId).toBe(existing.id);
-    expect((await prisma.customer.findUniqueOrThrow({ where: { id: existing.id } })).isGuest).toBe(false);
+    expect(res.body.customer.customerId).toBe(me.customer.id);
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: res.body.id } })).customerId).toBe(me.customer.id);
   });
 });
 
 describe("POST /api/orders — stock et disponibilité", () => {
-  it("refuse en OUT_OF_STOCK et annule TOUT (aucun stock, mouvement, client ou commande créés)", async () => {
+  it("refuse en OUT_OF_STOCK et annule TOUT (aucun stock, mouvement ou commande créés)", async () => {
     const a = await makeProduct({ name: "Veste A", variants: [{ stock: 5 }] });
     const b = await makeProduct({ name: "Veste B", variants: [{ stock: 1, color: "Rouge", size: "M" }] });
     const va = a.variants[0]!;
@@ -148,7 +171,7 @@ describe("POST /api/orders — stock et disponibilité", () => {
     expect(await stockOf(vb.id)).toBe(1);
     expect(await prisma.order.count()).toBe(0);
     expect(await prisma.stockMovement.count()).toBe(0);
-    expect(await prisma.customer.count()).toBe(0);
+    expect(await prisma.customer.count()).toBe(1); // seulement le compte de la cliente connectée : la commande refusée n'a rien créé
     expect((await prisma.product.findUniqueOrThrow({ where: { id: a.id } })).soldCount).toBe(0);
   });
 
@@ -355,7 +378,7 @@ describe("GET /api/orders/track", () => {
     for (const phone of ["0555123456", "0555 12 34 56", "+213555123456", "00213555123456"]) {
       const res = await http().get("/api/orders/track").query({ number: order.orderNumber, phone });
       expect(res.status, phone).toBe(200);
-      expect(res.body.id).toBe(order.id);
+      expect(res.body.orderNumber).toBe(order.orderNumber);
       expect(res.body.statusHistory).toHaveLength(1);
     }
   });
@@ -410,8 +433,10 @@ describe("administration — consultation des commandes", () => {
     const product = await makeProduct({ price: 10_000, variants: [{ stock: 50 }] });
     const id = product.variants[0]!.id;
     const o1 = (await post(orderBody([{ variantId: id, quantity: 1 }]))).body; // 10 450, domicile, Amina Benali
+    // Karim est une AUTRE cliente connectée : le filtre par cliente (customerId) doit les distinguer.
+    const karim = await customerAgent({ phone: "0661 22 33 44", phoneKey: "0661223344", firstName: "Karim", lastName: "Haddad" });
     const o2 = (
-      await post(
+      await karim.agent.post("/api/orders").send(
         orderBody([{ variantId: id, quantity: 3 }], {
           customer: { firstName: "Karim", lastName: "Haddad", phone: "0661 22 33 44" },
           shippingAddress: { wilayaCode: "31", commune: "Oran", address: "", deliveryMethod: "pickup_point", pickupPointId: "31-centre" },

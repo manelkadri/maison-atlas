@@ -44,11 +44,9 @@ async function customerB() {
   });
 }
 
-/** Passe une commande pour le numéro donné (le flux public actuel rattache la commande à la cliente de ce numéro). */
-async function placeOrder(phone: string, firstName: string, variantId: string) {
-  const res = await http()
-    .post("/api/orders")
-    .send(orderBody([{ variantId, quantity: 1 }], { customer: { firstName, lastName: "Test", phone } }));
+/** Passe une commande EN TANT QUE la cliente connectée de cet agent (la commande exige une session). */
+async function placeOrder(buyer: { agent: ReturnType<typeof supertest.agent> }, variantId: string) {
+  const res = await buyer.agent.post("/api/orders").send(orderBody([{ variantId, quantity: 1 }]));
   expect(res.status, JSON.stringify(res.body)).toBe(201);
   return res.body as { id: string; orderNumber: string };
 }
@@ -114,10 +112,13 @@ describe("isolation entre clientes : une cliente ne voit ni ne modifie jamais le
     const a = await customerAgent();
     const b = await customerB();
     const product = await makeProduct({ price: 10_000, costPrice: 4_321, variants: [{ stock: 50 }, { stock: 50 }, { stock: 50 }] });
-    const a1 = await placeOrder(CUSTOMER.phone, "Amina", product.variants[0]!.id);
-    const a2 = await placeOrder(CUSTOMER.phone, "Amina", product.variants[1]!.id);
-    const b1 = await placeOrder(B.phone, "Yacine", product.variants[2]!.id);
-    const guest = await placeOrder("0770 55 55 55", "Invitée", product.variants[0]!.id); // commande sans compte
+    const a1 = await placeOrder(a, product.variants[0]!.id);
+    const a2 = await placeOrder(a, product.variants[1]!.id);
+    const b1 = await placeOrder(b, product.variants[2]!.id);
+    // Une cliente « historique » (fiche sans mot de passe, ex. ancienne commande invitée) : ses commandes ne sont à personne d'autre.
+    const legacy = await customerAgent({ phone: "0770 55 55 55", phoneKey: "0770555555", firstName: "Historique" });
+    const guest = await placeOrder(legacy, product.variants[0]!.id);
+    await prisma.customer.update({ where: { id: legacy.customer.id }, data: { passwordHash: null, isGuest: true } });
     return { a, b, a1, a2, b1, guest };
   }
 
@@ -514,7 +515,8 @@ describe("nettoyage planifié (GET /api/internal/purge)", () => {
   it("supprime sessions expirées, compteurs périmés et audit au-delà de la conservation — jamais les données métier ni les éléments récents", async () => {
     const customer = await createCustomerAccount();
     const product = await makeProduct();
-    await http().post("/api/orders").send(orderBody([{ variantId: product.variants[0]!.id, quantity: 1 }])).expect(201);
+    const orderer = await customerAgent({ phone: "0661 00 00 07", phoneKey: "0661000007" });
+    await orderer.agent.post("/api/orders").send(orderBody([{ variantId: product.variants[0]!.id, quantity: 1 }])).expect(201);
     const old = new Date(Date.now() - 40 * 24 * 3600_000);
     const expired = await createCustomerSession(prisma, customer.id, "expirée", old);
     const active = await createCustomerSession(prisma, customer.id, "active");

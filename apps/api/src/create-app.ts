@@ -9,7 +9,7 @@ import { env, isTest } from "./config/env";
 import { requireAdmin } from "./middlewares/auth";
 import { errorHandler, notFoundHandler } from "./middlewares/error-handler";
 import { csrfOriginCheck } from "./middlewares/security";
-import { scrubbedErrSerializer } from "./utils/log-scrub";
+import { requestSerializer, responseSerializer, scrubbedErrSerializer } from "./utils/log-scrub";
 import { adminRouter, publicRouter } from "./modules";
 import { internalRouter } from "./modules/internal";
 
@@ -19,7 +19,7 @@ import { internalRouter } from "./modules/internal";
  */
 export const LOG_REDACT = ["req.headers.cookie", "req.headers.authorization", 'res.headers["set-cookie"]'];
 /** Options pino communes (l'application et les tests utilisent exactement la même configuration). */
-export const LOG_OPTIONS = { redact: LOG_REDACT, serializers: { err: scrubbedErrSerializer } };
+export const LOG_OPTIONS = { redact: LOG_REDACT, serializers: { req: requestSerializer, res: responseSerializer, err: scrubbedErrSerializer } };
 
 /**
  * Fabrique l'application Express (sans écouter sur un port : les tests l'utilisent directement).

@@ -25,7 +25,20 @@ const MINUTE = 60_000;
 export const THROTTLE = {
   loginIp: { scope: "login-ip", max: 30, windowMs: 15 * MINUTE },
   loginPhone: { scope: "login-phone", maxFailures: 5, windowMs: 15 * MINUTE, lockMs: 15 * MINUTE },
+  /**
+   * INSCRIPTIONS — chaque tentative (numéro neuf OU déjà inscrit : comptage IDENTIQUE) consomme, dans cet ordre, du plus étroit au
+   * plus large, un budget ATOMIQUE en base. La première limite atteinte répond 429 et les suivantes ne sont pas entamées : une IP
+   * abusive n'épuise donc jamais le budget global. Contrôlées AVANT toute vérification d'existence du numéro.
+   *   par IP (IPv6 en /64) : 10 par heure et 20 par jour ;  par sous-réseau (IPv4 /24, IPv6 /48) : 60 par jour ;
+   *   global (toutes IP) : 100 par heure et 500 par jour.
+   * Une boutique réelle reçoit quelques inscriptions par jour : ces plafonds sont hors de portée d'un usage normal, et un sondage
+   * massif des numéros déjà inscrits devient impraticable (au plus 500 essais par jour au total).
+   */
   registerIp: { scope: "register-ip", max: 10, windowMs: 60 * MINUTE },
+  registerIpDay: { scope: "register-ip-day", max: 20, windowMs: 24 * 60 * MINUTE },
+  registerSubnetDay: { scope: "register-subnet-day", max: 60, windowMs: 24 * 60 * MINUTE },
+  registerGlobalHour: { scope: "register-global-hour", max: 100, windowMs: 60 * MINUTE },
+  registerGlobalDay: { scope: "register-global-day", max: 500, windowMs: 24 * 60 * MINUTE },
   /** Changement de mot de passe : échecs du mot de passe ACTUEL, par cliente (un vol de session ne doit pas permettre de le deviner). */
   passwordChange: { scope: "password-change", maxFailures: 5, windowMs: 15 * MINUTE, lockMs: 15 * MINUTE },
   /** Ré-authentification de l'administrateur avant une réinitialisation : échecs de SON mot de passe, par administrateur. */

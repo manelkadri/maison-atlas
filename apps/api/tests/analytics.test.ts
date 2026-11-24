@@ -4,7 +4,7 @@ import { resolve } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { loadDemoData, seedDemo } from "../prisma/seed-demo";
 import { getDashboard, getReport } from "../src/modules/analytics";
-import { adminAgent, http, prisma, resetDatabase } from "./helpers";
+import { adminAgent, customerAgent, http, prisma, resetDatabase } from "./helpers";
 import { makeProduct, orderBody } from "./api2-factories";
 
 beforeEach(resetDatabase);
@@ -13,8 +13,13 @@ type Agent = Awaited<ReturnType<typeof adminAgent>>;
 const PERIODS: AnalyticsPeriod[] = ["7d", "30d", "90d", "12m", "all"];
 const DAY = 86_400_000;
 
+let buyer: Awaited<ReturnType<typeof customerAgent>>["agent"];
+beforeEach(async () => {
+  buyer = (await customerAgent()).agent; // la commande exige une cliente connectée
+});
+
 async function place(variantId: string, quantity: number, promoCode?: string) {
-  const res = await http().post("/api/orders").send(orderBody([{ variantId, quantity }], promoCode ? { promoCode } : {}));
+  const res = await buyer.post("/api/orders").send(orderBody([{ variantId, quantity }], promoCode ? { promoCode } : {}));
   expect(res.status).toBe(201);
   return res.body as { id: string };
 }

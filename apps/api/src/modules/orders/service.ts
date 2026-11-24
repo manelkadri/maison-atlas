@@ -9,7 +9,7 @@ import {
   normalizePhone,
   validatePromotion,
 } from "@fashion/shared";
-import type { Order, OrderStatus, PaymentStatus, StoreSettings } from "@fashion/types";
+import type { CustomerOrder, Order, OrderStatus, PaymentStatus, PublicTrackedOrder, StoreSettings } from "@fashion/types";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../../config/db";
@@ -17,7 +17,7 @@ import { invalidTransition, notFound, outOfStock, validation } from "../../utils
 import { DEFAULT_SETTINGS } from "../../utils/default-settings";
 import { nextOrderSequence, orderNumberFor } from "../../utils/order-number";
 import { toPromotion } from "../promotions/mappers";
-import { orderInclude, toOrder } from "./mappers";
+import { orderInclude, toCustomerOrder, toOrder, toPublicTrackedOrder } from "./mappers";
 import type { ParsedCreateOrder, ParsedOrderFilters } from "./schemas";
 
 type Tx = Prisma.TransactionClient;
@@ -77,7 +77,12 @@ async function reservationError(tx: Tx, variantId: string) {
   return outOfStock(stockMessage(v.product.name, v.color, v.size, v.stock));
 }
 
-export async function createOrder(input: ParsedCreateOrder): Promise<Order> {
+/**
+ * Crée une commande POUR la cliente authentifiée `customerId` (identité issue de la SESSION, jamais du corps de la requête).
+ * Le nom, le téléphone et l'e-mail du formulaire ne sont que les coordonnées de LIVRAISON de cette commande (on peut commander
+ * pour une proche) : ils ne créent, ne retrouvent et ne modifient AUCUNE fiche client. Réponse : vue de la cliente, sans prix de revient.
+ */
+export async function createOrder(input: ParsedCreateOrder, customerId: string): Promise<CustomerOrder> {
   // 1. Cohérence wilaya / mode de livraison (les noms viennent de nos tables, jamais du client).
   const wilaya = getWilaya(input.shippingAddress.wilayaCode);
   if (!wilaya) throw validation("Wilaya inconnue.");
@@ -151,25 +156,9 @@ export async function createOrder(input: ParsedCreateOrder): Promise<Order> {
     const shippingFee = getShippingFee(settings, wilaya.code, input.shippingAddress.deliveryMethod, subtotal);
     const totals = computeOrderTotals({ subtotal, discount, shippingFee });
 
-    // 5. Client : retrouvé par téléphone normalisé, sinon créé en invité (INSERT … ON CONFLICT DO NOTHING : sûr en concurrence).
-    const phoneKey = normalizePhone(input.customer.phone);
-    await tx.customer.createMany({
-      data: [
-        {
-          firstName: input.customer.firstName,
-          lastName: input.customer.lastName,
-          phone: input.customer.phone,
-          phoneKey,
-          email: input.customer.email ?? null,
-          wilayaCode: wilaya.code,
-          commune: input.shippingAddress.commune,
-          address: input.shippingAddress.address,
-          isGuest: true,
-        },
-      ],
-      skipDuplicates: true,
-    });
-    const customer = await tx.customer.findUniqueOrThrow({ where: { phoneKey }, select: { id: true } });
+    // 5. Cliente : celle de la SESSION (la clé étrangère garantit qu'elle existe). Aucune fiche n'est créée ni modifiée à partir
+    //    du téléphone saisi dans le formulaire : sinon on pourrait toucher le compte d'une autre personne en saisissant son numéro.
+    const customer = { id: customerId };
 
     // 6. Commande, historique initial, mouvements de vente, compteur de ventes.
     const now = new Date();
@@ -230,7 +219,7 @@ export async function createOrder(input: ParsedCreateOrder): Promise<Order> {
       await tx.product.update({ where: { id: productId }, data: { soldCount: { increment: qty } } });
     }
 
-    return toOrder(created);
+    return toCustomerOrder(created);
   }, TX_OPTIONS);
 }
 
@@ -238,12 +227,16 @@ export async function createOrder(input: ParsedCreateOrder): Promise<Order> {
 
 const TRACK_NOT_FOUND = "Aucune commande ne correspond à ces informations.";
 
-/** Même 404 (même message) que le numéro soit inconnu ou que le téléphone ne corresponde pas. */
-export async function trackOrder(number: string, phone: string): Promise<Order> {
+/**
+ * Même 404 (même message) que le numéro soit inconnu ou que le téléphone ne corresponde pas.
+ * Réponse DÉDIÉE (`PublicTrackedOrder`, liste blanche) : jamais l'objet complet de la commande — pas de prix de revient, de
+ * notes internes, d'identifiants internes, de nom de famille, de téléphone, d'e-mail ni d'adresse postale.
+ */
+export async function trackOrder(number: string, phone: string): Promise<PublicTrackedOrder> {
   const key = normalizePhone(phone);
   const row = key ? await prisma.order.findUnique({ where: { orderNumber: number.trim().toUpperCase() }, include: orderInclude }) : null;
   if (!row || normalizePhone(row.customerPhone) !== key) throw notFound(TRACK_NOT_FOUND);
-  return toOrder(row);
+  return toPublicTrackedOrder(row);
 }
 
 /* ------------------------------------------------------------------ lecture (admin) */

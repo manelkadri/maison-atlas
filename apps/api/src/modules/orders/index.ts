@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireCustomer } from "../../middlewares/customer-auth";
 import { limiter, orderLimiter } from "../../middlewares/security";
 import { notFound } from "../../utils/errors";
 import { parseBody, parseParams, parseQuery } from "../../utils/validate";
@@ -12,8 +13,13 @@ export const adminRoutes = Router();
 /** Anti-énumération du suivi (numéros séquentiels + téléphone) : 60 essais / 15 min / IP. */
 const trackLimiter = limiter({ windowMs: 15 * 60_000, limit: 60, message: "Trop de requêtes. Réessayez dans quelques minutes." });
 
-publicRoutes.post("/", orderLimiter(), async (req, res) => {
-  const order = await createOrder(parseCreateOrder(req.body));
+/**
+ * Passer commande exige une cliente CONNECTÉE (session vérifiée côté serveur à chaque requête). Une cliente dont le mot de passe
+ * provisoire n'a pas été changé est refusée (403 PASSWORD_CHANGE_REQUIRED). La commande est rattachée au compte de la session.
+ */
+publicRoutes.post("/", requireCustomer, orderLimiter(), async (req, res) => {
+  const order = await createOrder(parseCreateOrder(req.body), req.customer!.id);
+  res.setHeader("Cache-Control", "no-store");
   res.status(201).json(order);
 });
 
@@ -22,7 +28,7 @@ publicRoutes.get("/track", trackLimiter, async (req, res) => {
   const parsed = trackQuerySchema.safeParse(req.query);
   if (!parsed.success) throw notFound("Aucune commande ne correspond à ces informations.");
   res.setHeader("Cache-Control", "no-store");
-  res.json(await trackOrder(parsed.data.number, parsed.data.phone));
+  res.json(await trackOrder(parsed.data.number, parsed.data.phone)); // PublicTrackedOrder : réponse dédiée, liste blanche
 });
 
 adminRoutes.get("/", async (req, res) => {

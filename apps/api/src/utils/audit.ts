@@ -14,6 +14,8 @@ import { maskIp } from "./ip";
 
 export type AuditAction =
   | "customer.registered"
+  | "customer.register_duplicate"
+  | "customer.register_limit_reached"
   | "customer.login_locked"
   | "customer.password_changed"
   | "customer.password_change_forced"
@@ -23,6 +25,10 @@ export type AuditAction =
 /** Clés de métadonnées autorisées par action (liste fermée). */
 export const ALLOWED_METADATA: Record<AuditAction, readonly string[]> = {
   "customer.registered": [],
+  // Tentative d'inscription avec un numéro DÉJÀ inscrit (cible = le compte concerné). `legacy` : compte historique sans mot de passe.
+  "customer.register_duplicate": ["legacy"],
+  // Un plafond d'inscriptions vient d'être atteint (écrit UNE fois par fenêtre) : signal d'un possible sondage automatisé.
+  "customer.register_limit_reached": ["limit"],
   "customer.login_locked": ["accountExists", "lockMinutes"],
   // « revokedCount » : nombre de sessions révoquées (le mot « session » est volontairement absent des noms de clés autorisées).
   "customer.password_changed": ["revokedCount"],

@@ -36,3 +36,25 @@ export function maskIp(ip: string | undefined | null): string | null {
   }
   return null;
 }
+
+/**
+ * Clé de LIMITATION par adresse : IPv4 telle quelle, IPv6 regroupée en /64 (un abonné reçoit au minimum un /64 : sans cela, il
+ * contournerait toute limite en changeant librement les 64 derniers bits). L'IPv4 incorporée (`::ffff:a.b.c.d`) est traitée comme IPv4.
+ * Adresse inconnue : « unknown » (tous les cas indéterminés partagent alors un seul compteur, ce qui est le choix prudent).
+ */
+export function ipLimitKey(ip: string | undefined | null): string {
+  if (!ip) return "unknown";
+  const mapped = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i.exec(ip);
+  const raw = mapped?.[1] ?? ip;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(raw)) return raw;
+  const groups = raw.includes(":") ? ipv6Groups(raw) : null;
+  return groups ? `${groups.slice(0, 4).join(":")}::/64` : "unknown";
+}
+
+/**
+ * Clé de limitation par SOUS-RÉSEAU : IPv4 en /24, IPv6 en /48 (même découpage que `maskIp`). Borne un robot qui change d'adresse
+ * à l'intérieur d'une même plage. Adresse inconnue : « unknown ».
+ */
+export function subnetLimitKey(ip: string | undefined | null): string {
+  return maskIp(ip) ?? "unknown";
+}

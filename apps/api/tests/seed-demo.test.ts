@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import { resolve } from "node:path";
 import { beforeAll, describe, expect, it } from "vitest";
 import { assertSeedAllowed, loadDemoData, seedDemo, type DemoData, type SeedResult } from "../prisma/seed-demo";
-import { adminAgent, http, prisma, resetDatabase } from "./helpers";
+import { adminAgent, customerAgent, http, prisma, resetDatabase } from "./helpers";
 
 let demo: DemoData;
 let first: SeedResult;
@@ -144,28 +144,28 @@ describe("seed de démonstration — visible dans l'API", () => {
   it("une nouvelle commande reprend la numérotation après la dernière commande de la démo", async () => {
     const lastSeq = Math.max(...demo.orders.map((o) => Number(o.orderNumber.slice(-6))));
     const variant = await prisma.productVariant.findFirstOrThrow({ where: { stock: { gte: 3 }, product: { isPublished: true, isArchived: false } } });
-    const res = await http()
-      .post("/api/orders")
-      .send({
-        customer: { firstName: "Test", lastName: "Seed", phone: "0555 99 88 77" },
-        shippingAddress: { wilayaCode: "16", commune: "Alger", address: "12 rue de test", deliveryMethod: "home" },
-        items: [{ variantId: variant.id, quantity: 1 }],
-      });
+    const buyer = await customerAgent({ phone: "0555 99 88 77", phoneKey: "0555998877", firstName: "Test", lastName: "Seed" });
+    const res = await buyer.agent.post("/api/orders").send({
+      customer: { firstName: "Test", lastName: "Seed", phone: "0555 99 88 77" },
+      shippingAddress: { wilayaCode: "16", commune: "Alger", address: "12 rue de test", deliveryMethod: "home" },
+      items: [{ variantId: variant.id, quantity: 1 }],
+    });
     expect(res.status).toBe(201);
     expect(Number(res.body.orderNumber.slice(-6))).toBe(lastSeq + 1);
   });
 
-  it("les clients de la démo sont retrouvés par leur téléphone normalisé", async () => {
+  it("saisir le téléphone d'une cliente de la démo comme coordonnée de livraison ne touche pas sa fiche", async () => {
     const c = demo.customers[2]!;
+    const before = JSON.stringify(await prisma.customer.findUniqueOrThrow({ where: { id: c.id } }));
     const variant = await prisma.productVariant.findFirstOrThrow({ where: { stock: { gte: 3 }, product: { isPublished: true, isArchived: false } } });
-    const res = await http()
-      .post("/api/orders")
-      .send({
-        customer: { firstName: c.firstName, lastName: c.lastName, phone: `+213${c.phone.replace(/\D/g, "").slice(1)}` },
-        shippingAddress: { wilayaCode: c.wilayaCode, commune: c.commune, address: "Adresse de test", deliveryMethod: "home" },
-        items: [{ variantId: variant.id, quantity: 1 }],
-      });
+    const buyer = await customerAgent({ phone: "0555 99 88 76", phoneKey: "0555998876", firstName: "Autre", lastName: "Cliente" });
+    const res = await buyer.agent.post("/api/orders").send({
+      customer: { firstName: c.firstName, lastName: c.lastName, phone: `+213${c.phone.replace(/\D/g, "").slice(1)}` },
+      shippingAddress: { wilayaCode: c.wilayaCode, commune: c.commune, address: "Adresse de test", deliveryMethod: "home" },
+      items: [{ variantId: variant.id, quantity: 1 }],
+    });
     expect(res.status).toBe(201);
-    expect(res.body.customer.customerId).toBe(c.id);
+    expect(res.body.customer.customerId).toBe(buyer.customer.id); // rattachée à la cliente connectée, pas à celle du numéro saisi
+    expect(JSON.stringify(await prisma.customer.findUniqueOrThrow({ where: { id: c.id } }))).toBe(before);
   });
 });

@@ -1,4 +1,4 @@
-import type { Order, OrderItem, OrderStatusEvent } from "@fashion/types";
+import type { CustomerOrder, Order, OrderItem, OrderStatusEvent, PublicTrackedOrder } from "@fashion/types";
 import type { Prisma } from "@prisma/client";
 
 /** Relations chargées avec une commande pour produire le type partagé `Order`. */
@@ -70,6 +70,101 @@ export function toOrder(row: OrderRowLite): Order {
     status: row.status,
     statusHistory,
     ...(row.customerNote ? { customerNote: row.customerNote } : {}),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * Commande vue par SA propriétaire (espace client, réponse à la création d'une commande).
+ * Construite champ par champ (liste blanche) : SANS prix de revient (`unitCost`) ni notes internes de l'historique, et un champ
+ * ajouté plus tard à `Order` n'y apparaît jamais automatiquement.
+ */
+export function toCustomerOrder(row: OrderRowLite): CustomerOrder {
+  return {
+    id: row.id,
+    orderNumber: row.orderNumber,
+    customer: {
+      ...(row.customerId ? { customerId: row.customerId } : {}),
+      firstName: row.customerFirstName,
+      lastName: row.customerLastName,
+      phone: row.customerPhone,
+      ...(row.customerEmail ? { email: row.customerEmail } : {}),
+    },
+    shippingAddress: {
+      wilayaCode: row.wilayaCode,
+      wilayaName: row.wilayaName,
+      commune: row.commune,
+      address: row.address,
+      deliveryMethod: row.deliveryMethod,
+      ...(row.pickupPointId ? { pickupPointId: row.pickupPointId } : {}),
+      ...(row.pickupPointName ? { pickupPointName: row.pickupPointName } : {}),
+    },
+    items: row.items.map((item) => ({
+      id: item.id,
+      productId: item.productId,
+      variantId: item.variantId,
+      productName: item.productName,
+      productSlug: item.productSlug,
+      sku: item.sku,
+      color: item.color,
+      colorCode: item.colorCode,
+      size: item.size,
+      imageUrl: item.imageUrl,
+      unitPrice: item.unitPrice,
+      quantity: item.quantity,
+      lineTotal: item.lineTotal,
+    })),
+    subtotal: row.subtotal,
+    discountTotal: row.discountTotal,
+    ...(row.promoCode ? { promoCode: row.promoCode } : {}),
+    shippingFee: row.shippingFee,
+    total: row.total,
+    paymentMethod: "cash_on_delivery",
+    paymentStatus: row.paymentStatus,
+    deliveryMethod: row.deliveryMethod,
+    status: row.status,
+    statusHistory: (row.history ?? []).map((h) => ({ status: h.status, at: h.createdAt.toISOString() })),
+    ...(row.customerNote ? { customerNote: row.customerNote } : {}),
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+/**
+ * Réponse du SUIVI PUBLIC (numéro + téléphone) : voir `PublicTrackedOrder`. Construite champ par champ à partir de la LIGNE de base
+ * de données — jamais à partir de `toOrder` / `toCustomerOrder` — pour que rien d'interne ne puisse y passer par accident.
+ */
+export function toPublicTrackedOrder(row: OrderRowLite): PublicTrackedOrder {
+  return {
+    orderNumber: row.orderNumber,
+    status: row.status,
+    statusHistory: (row.history ?? []).map((h) => ({ status: h.status, at: h.createdAt.toISOString() })),
+    paymentMethod: "cash_on_delivery",
+    paymentStatus: row.paymentStatus,
+    customer: { firstName: row.customerFirstName },
+    shippingAddress: {
+      wilayaName: row.wilayaName,
+      commune: row.commune,
+      deliveryMethod: row.deliveryMethod,
+      ...(row.pickupPointName ? { pickupPointName: row.pickupPointName } : {}),
+    },
+    items: row.items.map((item) => ({
+      productName: item.productName,
+      productSlug: item.productSlug,
+      color: item.color,
+      colorCode: item.colorCode,
+      size: item.size,
+      imageUrl: item.imageUrl,
+      unitPrice: item.unitPrice,
+      quantity: item.quantity,
+      lineTotal: item.lineTotal,
+    })),
+    subtotal: row.subtotal,
+    discountTotal: row.discountTotal,
+    ...(row.promoCode ? { promoCode: row.promoCode } : {}),
+    shippingFee: row.shippingFee,
+    total: row.total,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
