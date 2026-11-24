@@ -21,6 +21,11 @@ const schema = z.object({
   CLOUDINARY_API_KEY: z.string().optional(),
   CLOUDINARY_API_SECRET: z.string().optional(),
   CLOUDINARY_FOLDER: z.string().default("maison-atlas"),
+  /**
+   * Secret de la tâche planifiée de nettoyage (`GET /api/internal/purge`). Vercel l'envoie en `Authorization: Bearer …` à
+   * chaque appel du cron quand cette variable existe. Absent : la route répond 404 (comme si elle n'existait pas).
+   */
+  CRON_SECRET: z.string().min(16, "CRON_SECRET doit faire au moins 16 caractères.").optional(),
   /** "off" désactive les limiteurs de débit (tests). */
   RATE_LIMIT: z.enum(["on", "off"]).default("on"),
   LOG_LEVEL: z.string().default("info"),
@@ -38,6 +43,7 @@ export const isTest = env.NODE_ENV === "test";
 export const webOrigins = env.WEB_ORIGIN.split(",").map((o) => o.trim()).filter(Boolean);
 
 if (isProduction) {
+  if (!env.CRON_SECRET) console.warn("CRON_SECRET absent : le nettoyage quotidien des sessions et du journal d'audit est inactif (seul le nettoyage opportuniste reste).");
   if (env.JWT_SECRET.length < 32 || env.JWT_SECRET.startsWith("dev-only")) {
     console.error("JWT_SECRET doit être un secret aléatoire d'au moins 32 caractères en production.");
     process.exit(1);

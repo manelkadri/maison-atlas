@@ -4,6 +4,7 @@ import {
   canTransition,
   computeOrderTotals,
   getShippingFee,
+  normalizePhone,
   validatePromotion,
   ORDER_STATUS_LABELS,
 } from "@fashion/shared";
@@ -13,8 +14,6 @@ import type { OrderService } from "./contracts";
 import { ServiceError } from "./errors";
 import { commit, getDb, nextId } from "./mock/db";
 import { pushMovement } from "./mock/movements";
-
-export const normalizePhone = (phone: string) => phone.replace(/\D/g, "").replace(/^213/, "0").replace(/^00213/, "0");
 
 function matchesFilters(order: Order, f: OrderFilters): boolean {
   if (f.status && f.status !== "all" && order.status !== f.status) return false;

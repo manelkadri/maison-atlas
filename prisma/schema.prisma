@@ -159,6 +159,75 @@ model Customer {
   isGuest   Boolean  @default(true)
   createdAt DateTime @default(now())
   orders    Order[]
+
+  // Compte client (téléphone + mot de passe) — comptes créés avant la phase « comptes » : tous nuls / faux.
+  /// Hachage bcrypt du mot de passe (jamais en clair). NULL = pas de mot de passe (connexion impossible).
+  passwordHash       String?
+  /// Vrai après une réinitialisation par l'administrateur : le mot de passe provisoire doit être changé.
+  mustChangePassword Boolean   @default(false)
+  passwordChangedAt  DateTime?
+  sessions           CustomerSession[]
+}
+
+/// Session d'une cliente connectée. Le cookie contient un jeton aléatoire ; on ne stocke que son empreinte SHA-256.
+/// Supprimer la ligne = révoquer la session pour de bon (déconnexion, changement de mot de passe, réinitialisation).
+model CustomerSession {
+  id         String   @id @default(cuid())
+  /// SHA-256 (hex) du jeton de session.
+  tokenHash  String   @unique
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastUsedAt DateTime @default(now())
+  /// User-Agent tronqué (information d'appareil, jamais utilisé pour décider).
+  userAgent  String?
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+/// Compteurs de limitation des tentatives (connexion, inscription…), partagés entre les instances du serveur.
+/// `keyHash` est un HMAC (jamais une IP ni un numéro en clair).
+model AuthThrottle {
+  id          String    @id @default(cuid())
+  /// Portée du compteur : « login-phone », « login-ip », « register-ip », « admin-reset »…
+  scope       String
+  keyHash     String
+  count       Int       @default(0)
+  windowStart DateTime  @default(now())
+  /// Blocage en cours (fixe, jamais définitif).
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([scope, keyHash])
+  @@index([updatedAt])
+}
+
+enum AuditActorType {
+  admin
+  customer
+  system
+}
+
+/// Journal d'audit des opérations sensibles. Jamais de mot de passe, de jeton, de cookie ni de secret ici :
+/// `metadata` n'accepte qu'une liste fermée de clés (voir le module d'audit de l'API).
+model AuditLog {
+  id         String         @id @default(cuid())
+  createdAt  DateTime       @default(now())
+  actorType  AuditActorType
+  actorId    String?
+  /// Ex. « customer.registered », « admin.customer_password_reset ».
+  action     String
+  targetType String?
+  targetId   String?
+  /// Adresse IP MASQUÉE (IPv4 en /24, IPv6 en /48).
+  ipMasked   String?
+  metadata   Json?
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
 }
 
 model Order {

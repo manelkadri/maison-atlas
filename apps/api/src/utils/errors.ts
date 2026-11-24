@@ -7,6 +7,7 @@ export type ErrorCode =
   | "OUT_OF_STOCK"
   | "INVALID_TRANSITION"
   | "RATE_LIMITED"
+  | "PASSWORD_CHANGE_REQUIRED"
   | "NOT_CONFIGURED"
   | "INTERNAL";
 
@@ -34,4 +35,6 @@ export const outOfStock = (message: string) => new AppError(409, "OUT_OF_STOCK",
 export const invalidTransition = (message: string) => new AppError(409, "INVALID_TRANSITION", message);
 export const unauthenticated = (message = "Authentification requise.") => new AppError(401, "UNAUTHENTICATED", message);
 export const forbidden = (message = "Accès refusé.") => new AppError(403, "FORBIDDEN", message);
+/** 403 : le mot de passe provisoire doit être changé avant toute autre action (contrôlé côté serveur). */
+export const passwordChangeRequired = (message = "Vous devez d'abord changer votre mot de passe provisoire.") => new AppError(403, "PASSWORD_CHANGE_REQUIRED", message);
 export const notConfigured = (message: string) => new AppError(501, "NOT_CONFIGURED", message);

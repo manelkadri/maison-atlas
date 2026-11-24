@@ -100,3 +100,13 @@ export type OrderFilters = {
   customerId?: string;
   phone?: string;
 };
+
+/** Ligne de commande vue par la cliente : SANS le prix de revient (donnée interne de la boutique). */
+export type CustomerOrderItem = Omit<OrderItem, "unitCost">;
+/** Étape de l'historique vue par la cliente : SANS la note interne de l'administration. */
+export type CustomerOrderStatusEvent = Omit<OrderStatusEvent, "note">;
+/** Commande telle que la voit sa propriétaire (espace client). */
+export type CustomerOrder = Omit<Order, "items" | "statusHistory"> & {
+  items: CustomerOrderItem[];
+  statusHistory: CustomerOrderStatusEvent[];
+};

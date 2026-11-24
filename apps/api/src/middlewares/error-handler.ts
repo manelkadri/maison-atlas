@@ -54,5 +54,9 @@ export const errorHandler: ErrorRequestHandler = (err, req, res, _next) => {
   if (status >= 500) req.log?.error({ err }, "erreur non gérée");
   else if (!isProduction) req.log?.debug({ code, message }, "erreur client");
 
+  if (status === 429 && typeof (details as { retryAfterSeconds?: unknown } | undefined)?.retryAfterSeconds === "number") {
+    res.setHeader("Retry-After", String((details as { retryAfterSeconds: number }).retryAfterSeconds));
+  }
+
   res.status(status).json({ error: { code, message, ...(details !== undefined && status < 500 ? { details } : {}) } });
 };

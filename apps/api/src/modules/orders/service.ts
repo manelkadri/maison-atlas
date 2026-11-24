@@ -6,6 +6,7 @@ import {
   getPickupPointsForWilaya,
   getShippingFee,
   getWilaya,
+  normalizePhone,
   validatePromotion,
 } from "@fashion/shared";
 import type { Order, OrderStatus, PaymentStatus, StoreSettings } from "@fashion/types";
@@ -15,7 +16,6 @@ import { prisma } from "../../config/db";
 import { invalidTransition, notFound, outOfStock, validation } from "../../utils/errors";
 import { DEFAULT_SETTINGS } from "../../utils/default-settings";
 import { nextOrderSequence, orderNumberFor } from "../../utils/order-number";
-import { normalizePhone } from "../../utils/phone";
 import { toPromotion } from "../promotions/mappers";
 import { orderInclude, toOrder } from "./mappers";
 import type { ParsedCreateOrder, ParsedOrderFilters } from "./schemas";
@@ -253,6 +253,14 @@ const algeriaStart = (day: string) => new Date(`${day}T00:00:00.000+01:00`);
 const algeriaEnd = (day: string) => new Date(`${day}T23:59:59.999+01:00`);
 
 /**
+ * Normalisation d'une colonne téléphone EN SQL : jumelle exacte de `normalizePhone` (@fashion/shared).
+ * Toute modification de l'une doit être répercutée sur l'autre ; l'égalité est vérifiée dans PostgreSQL par
+ * tests/phone-sql.test.ts.
+ */
+export const normalizedPhoneSql = (column: Prisma.Sql): Prisma.Sql =>
+  Prisma.sql`regexp_replace(regexp_replace(regexp_replace(${column}, '[^0-9]', '', 'g'), '^213', '0'), '^00213', '0')`;
+
+/**
  * Ids des commandes satisfaisant les filtres « texte » (recherche, téléphone normalisé) — évalués en SQL paramétré,
  * avec exactement la logique de l'interface : sous-chaîne insensible à la casse sur
  * « numéro prénom nom téléphone wilaya », et comparaison des téléphones après normalisation.
@@ -261,7 +269,7 @@ async function idsMatchingText(filters: ParsedOrderFilters): Promise<string[] | 
   const conditions: Prisma.Sql[] = [];
   if (filters.phone) {
     conditions.push(
-      Prisma.sql`regexp_replace(regexp_replace(regexp_replace("customerPhone", '[^0-9]', '', 'g'), '^213', '0'), '^00213', '0') = ${normalizePhone(filters.phone)}`,
+      Prisma.sql`${normalizedPhoneSql(Prisma.sql`"customerPhone"`)} = ${normalizePhone(filters.phone)}`,
     );
   }
   const q = filters.search?.trim().toLowerCase();

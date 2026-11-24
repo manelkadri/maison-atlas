@@ -1,8 +1,8 @@
+import { normalizePhone } from "@fashion/shared";
 import type { Customer, CustomerSummary } from "@/types/customer.types";
 import type { Order } from "@/types/order.types";
 import type { CustomerService } from "./contracts";
 import { getDb } from "./mock/db";
-import { normalizePhone } from "./orders.service";
 
 function summarize(customer: Customer, orders: Order[]): CustomerSummary {
   const mine = orders.filter((o) => o.customer.customerId === customer.id);

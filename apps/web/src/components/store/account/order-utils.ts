@@ -1,13 +1,8 @@
-import { FAILED_STATUSES, ORDER_STATUS_LABELS } from "@fashion/shared";
+import { FAILED_STATUSES, ORDER_STATUS_LABELS, normalizePhone } from "@fashion/shared";
 import type { Order, OrderStatus } from "@/types/order.types";
 
-/** Même règle que le service de commandes : "+213 555…" et "0555…" désignent le même numéro. */
-export function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("00213")) return `0${digits.slice(5)}`;
-  if (digits.startsWith("213")) return `0${digits.slice(3)}`;
-  return digits;
-}
+/** Normalisation unique du téléphone (« +213 555… » et « 0555… » désignent le même numéro) : voir `@fashion/shared`. */
+export { normalizePhone };
 
 /** Une commande n'appartient au client connecté que si le téléphone de la commande correspond à sa session. */
 export function isOwnOrder(order: Pick<Order, "customer">, sessionPhone: string | null | undefined): boolean {

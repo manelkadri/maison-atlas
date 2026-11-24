@@ -1,4 +1,5 @@
 import bcrypt from "bcryptjs";
+import { randomInt } from "node:crypto";
 
 /** Coût bcrypt des mots de passe du propriétaire (contrat : ≥ 12). */
 export const BCRYPT_COST = 12;
@@ -24,4 +25,18 @@ export function validateAdminPassword(password: string): string | null {
     return `Le mot de passe administrateur doit contenir au moins ${MIN_ADMIN_PASSWORD_LENGTH} caractères.`;
   }
   return null;
+}
+
+/**
+ * Mot de passe PROVISOIRE (réinitialisation par l'administrateur) : 12 caractères tirés avec un générateur cryptographique
+ * (`crypto.randomInt`, sans biais), sans caractères ambigus à la lecture ou à la dictée (pas de 0/O, 1/l/I).
+ * 56 symboles ^ 12 ≈ 70 bits d'entropie. Il n'est JAMAIS stocké en clair ni journalisé : on n'enregistre que son hachage bcrypt.
+ */
+export const TEMPORARY_PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
+export const TEMPORARY_PASSWORD_LENGTH = 12;
+
+export function generateTemporaryPassword(): string {
+  let out = "";
+  for (let i = 0; i < TEMPORARY_PASSWORD_LENGTH; i += 1) out += TEMPORARY_PASSWORD_ALPHABET[randomInt(TEMPORARY_PASSWORD_ALPHABET.length)];
+  return out;
 }

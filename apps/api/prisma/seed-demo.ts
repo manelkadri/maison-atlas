@@ -14,9 +14,9 @@ import { PrismaClient, type Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { normalizePhone } from "@fashion/shared";
 import type { Category, Customer, Order, Product, Promotion, StockMovement, StoreSettings } from "@fashion/types";
 import { syncOrderSequence } from "../src/utils/order-number";
-import { normalizePhone } from "../src/utils/phone";
 
 export type DemoData = {
   categories: Category[];

@@ -29,6 +29,7 @@ export default async function setup() {
   process.env.DATABASE_URL = db.url;
   process.env.NODE_ENV = "test";
   process.env.RATE_LIMIT = "off";
+  process.env.CRON_SECRET = "test-cron-secret-0123456789";
   process.env.JWT_SECRET = "test-secret-test-secret-test-secret-123456";
   process.env.WEB_ORIGIN = "http://localhost:3000";
   process.env.UPLOAD_DRIVER = "local";

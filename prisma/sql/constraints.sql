@@ -26,3 +26,14 @@ ALTER TABLE "Promotion" ADD CONSTRAINT "Promotion_percentage_max" CHECK ("type" 
 
 -- Un seul magasin : une seule ligne de paramètres.
 ALTER TABLE "StoreSettings" ADD CONSTRAINT "StoreSettings_single_row" CHECK ("id" = 1);
+
+-- Comptes clientes (migration 20261124163134_customer_accounts).
+-- Le téléphone normalisé (clé d'unicité d'un client) a toujours le format national algérien (même clé que `normalizePhone`).
+ALTER TABLE "Customer" ADD CONSTRAINT "Customer_phoneKey_format" CHECK ("phoneKey" ~ '^0[5-7][0-9]{8}$');
+-- Un mot de passe n'est jamais stocké en clair : la base n'accepte qu'un hachage bcrypt.
+ALTER TABLE "Customer" ADD CONSTRAINT "Customer_passwordHash_bcrypt"
+  CHECK ("passwordHash" IS NULL OR "passwordHash" ~ '^\$2[aby]\$(0[4-9]|[12][0-9]|3[01])\$[./A-Za-z0-9]{53}$');
+ALTER TABLE "CustomerSession" ADD CONSTRAINT "CustomerSession_expiry_valid" CHECK ("expiresAt" > "createdAt");
+ALTER TABLE "AuthThrottle" ADD CONSTRAINT "AuthThrottle_count_non_negative" CHECK ("count" >= 0);
+-- Les nouvelles tables (CustomerSession, AuthThrottle, AuditLog) ont la RLS activée (voir la migration) ; tout nouvel ajout de
+-- table doit en faire autant : tests/migrations.test.ts échoue sinon.

@@ -77,6 +77,8 @@ Pas de liste de commandes « par téléphone seul » ni de recherche de client p
 | GET | `/categories?includeArchived=true` | `Category[]` |
 | POST / PATCH | `/categories` · `/categories/:id` | `CreateCategoryInput` / `UpdateCategoryInput` → `Category` |
 | POST | `/categories/:id/archive` · `/restore` | → `204` (l'archivage cascade aux sous-catégories) |
+| GET | `/categories/:id/deletion-impact` | → `{ subcategories, products, orderedProducts }` : ce que supprimerait la suppression définitive (arbre complet, archivés compris) ; `409` pour une collection |
+| DELETE | `/categories/:id` | → `204`. Supprime DÉFINITIVEMENT la catégorie, ses sous-catégories et leurs produits (variantes, images, mouvements de stock en cascade). Tout ou rien : `409` si un produit figure dans une commande (archiver à la place) ou si l'arbre contient une collection ; `404` si inconnue |
 | GET | `/orders?search&status&deliveryMethod&dateFrom&dateTo&minTotal&maxTotal&customerId&phone` | `Order[]` (dates `YYYY-MM-DD` interprétées en heure d'Algérie, UTC+1) |
 | GET | `/orders/:id` · `/orders/by-number/:number` | `Order` ou 404 |
 | PATCH | `/orders/:id/status` | `{ status, note? }` → `Order`. Transition via `canTransition` sinon `INVALID_TRANSITION`. Annulée/refusée/retournée ⇒ stock restitué + mouvement `return`. `delivered` ⇒ `paymentStatus=paid` ; `delivery_failed`/`returned` ⇒ `failed` ; `shipped` ⇒ `pending`. Historique complété. |
