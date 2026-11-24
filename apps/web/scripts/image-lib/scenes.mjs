@@ -230,10 +230,10 @@ export function ogSvg() {
     `<rect x="0" y="560" width="1200" height="70" fill="#e4d9c6"/>`;
   const text =
     `<g fill="#171412" font-family="Georgia, 'Times New Roman', serif">` +
-    `<text x="84" y="300" font-size="68" letter-spacing="10">MAISON</text>` +
-    `<text x="84" y="378" font-size="68" letter-spacing="10">ATLAS</text>` +
+    `<text x="84" y="300" font-size="68" letter-spacing="10">ALI</text>` +
+    `<text x="84" y="378" font-size="68" letter-spacing="10">PRESTIGE</text>` +
     `<rect x="86" y="410" width="72" height="3" fill="#6b5444"/>` +
-    `<text x="86" y="458" font-size="24" fill="#6b5444" letter-spacing="3">Vêtements pour elle et lui</text>` +
+    `<text x="86" y="458" font-size="24" fill="#6b5444" letter-spacing="3">Mode femme &amp; accessoires</text>` +
     `</g>`;
   return svgDoc({ w: 1200, h: 630, bg, defs, content: deco + content + text, label: "Ali Prestige" });
 }

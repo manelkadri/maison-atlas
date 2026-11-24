@@ -50,7 +50,7 @@ function Group({ hidden }: { hidden?: boolean }) {
 export function AnnouncementBar() {
   return (
     <div role="group" aria-label="Informations de la boutique" className="bg-primary text-primary-foreground overflow-hidden">
-      <div className="animate-marquee flex w-max hover:[animation-play-state:paused] motion-reduce:w-full motion-reduce:justify-center">
+      <div className="animate-marquee pause-on-hover flex w-max motion-reduce:w-full motion-reduce:justify-center">
         <Group />
         <Group hidden />
       </div>

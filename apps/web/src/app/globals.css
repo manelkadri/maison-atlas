@@ -228,6 +228,13 @@
   animation: marquee 60s linear infinite;
 }
 
+/* Met l'animation en pause au survol (souris uniquement : pas de pause « collée » sur écran tactile). */
+@media (hover: hover) {
+  .pause-on-hover:hover {
+    animation-play-state: paused;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-marquee {
     animation: none;
