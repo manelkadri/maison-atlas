@@ -214,6 +214,26 @@
   }
 }
 
+/* Barre d'annonce : défilement continu (deux groupes identiques ⇒ boucle sans coupure à -50 %). */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 60s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
+}
+
 @keyframes whatsapp-ring {
   0% {
     transform: scale(1);
