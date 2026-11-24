@@ -8,8 +8,11 @@ export const apiCustomerService: CustomerService = {
 
   getCustomerById: (id) => apiFetchOrNull<{ customer: CustomerSummary; orders: Order[] }>(`/admin/customers/${encodeURIComponent(id)}`),
 
-  /** Aucune recherche de client par téléphone côté public : ce serait une fuite de données personnelles. */
-  async findByPhone() {
-    return null;
+  async resetPassword(customerId, adminPassword) {
+    const result = await apiFetch<{ customerId: string; temporaryPassword: string; mustChangePassword: true }>(
+      `/admin/customers/${encodeURIComponent(customerId)}/reset-password`,
+      { method: "POST", body: { adminPassword } },
+    );
+    return { temporaryPassword: result.temporaryPassword };
   },
 };

@@ -133,11 +133,11 @@ describe("construction de l'entrée de commande (place-order)", () => {
   });
 
   it("préremplit le formulaire depuis la session client et l'estimation de livraison du panier", () => {
-    const defaults = getCheckoutDefaults(
-      { firstName: "Sara", lastName: "Haddad", phone: "0661234567", email: "sara@example.com" },
-      { wilayaCode: "31", method: "pickup_point" },
-    );
-    expect(defaults).toMatchObject({ firstName: "Sara", lastName: "Haddad", phone: "0661234567", wilayaCode: "31", deliveryMethod: "pickup_point" });
+    const account = { firstName: "Sara", lastName: "Haddad", phone: "0661234567", wilayaCode: "31", commune: "Es Senia", address: "12 rue des Roses" };
+    const defaults = getCheckoutDefaults(account, { wilayaCode: "31", method: "pickup_point" });
+    expect(defaults).toMatchObject({ firstName: "Sara", lastName: "Haddad", phone: "0661234567", wilayaCode: "31", deliveryMethod: "pickup_point", commune: "Es Senia", address: "12 rue des Roses" });
+    // Autre wilaya que celle du compte : commune et adresse ne sont pas proposées (elles ne correspondraient pas).
+    expect(getCheckoutDefaults(account, { wilayaCode: "16", method: "home" })).toMatchObject({ commune: "", address: "", wilayaCode: "16" });
     expect(getCheckoutDefaults(null, { wilayaCode: "16", method: "home" })).toMatchObject({ firstName: "", phone: "", wilayaCode: "16", deliveryMethod: "home" });
   });
 });

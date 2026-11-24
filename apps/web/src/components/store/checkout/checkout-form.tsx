@@ -6,6 +6,7 @@ import { checkoutSchema, type CheckoutFormValues } from "@fashion/validators";
 import { AlertTriangle, Banknote, Building2, Home, Loader2, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,15 +16,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { applyCartReconciliation } from "@/features/cart/apply-reconciliation";
+import { isPasswordChangeRequired, isUnauthenticated } from "@/features/account/hooks";
 import { useCartTotals } from "@/features/cart/hooks";
 import { buildCreateOrderInput, isCartConflictError } from "@/features/checkout/place-order";
 import { useCreateOrder } from "@/features/orders/hooks";
 import { useProducts } from "@/features/products/hooks";
+import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { getErrorMessage } from "@/services";
 import { useCartStore } from "@/stores/cart.store";
-import { useCustomerSessionStore } from "@/stores/customer-session.store";
-import { usePlacedOrdersStore } from "@/stores/placed-orders.store";
 import type { DeliveryMethod } from "@/types/order.types";
 import { OrderSummary } from "./order-summary";
 import { WilayaSelect } from "./wilaya-select";
@@ -33,6 +34,8 @@ const NOTE_MAX = 300;
 
 type CheckoutFormProps = {
   initialValues: CheckoutFormValues;
+  /** E-mail du compte (facultatif), joint à la commande. */
+  email?: string;
   /** Appelé juste avant la redirection : le parent évite d'afficher « panier vide » pendant ce temps. */
   onPlaced: () => void;
 };
@@ -53,11 +56,11 @@ function SectionCard({ title, step, children }: { title: string; step: number; c
   );
 }
 
-export function CheckoutForm({ initialValues, onPlaced }: CheckoutFormProps) {
+export function CheckoutForm({ initialValues, email, onPlaced }: CheckoutFormProps) {
+  const queryClient = useQueryClient();
   const router = useRouter();
   const setShipping = useCartStore((s) => s.setShipping);
   const clearCart = useCartStore((s) => s.clear);
-  const email = useCustomerSessionStore((s) => s.profile?.email);
   const createOrder = useCreateOrder();
   const productsQuery = useProducts({ onlyPublic: true });
 
@@ -100,8 +103,7 @@ export function CheckoutForm({ initialValues, onPlaced }: CheckoutFormProps) {
     try {
       const input = buildCreateOrderInput({ values, items: totals.items, promoCode: totals.promo.activeCode, email });
       const order = await createOrder.mutateAsync(input);
-      // Mémorise (numéro, téléphone) sur l'appareil : c'est ce qui permet de suivre la commande sans compte.
-      usePlacedOrdersStore.getState().remember({ orderNumber: order.orderNumber, phone: input.customer.phone, createdAt: order.createdAt });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.account.orders });
       onPlaced();
       clearCart();
       toast.success(`Commande ${order.orderNumber} enregistrée`, { description: "Nous vous appelons très bientôt pour la confirmer." });
@@ -109,6 +111,14 @@ export function CheckoutForm({ initialValues, onPlaced }: CheckoutFormProps) {
       // Le verrou reste actif : on quitte la page.
     } catch (error) {
       lock.current = false;
+      if (isUnauthenticated(error) || isPasswordChangeRequired(error)) {
+        // Session expirée (ou mot de passe provisoire non changé) : on revérifie le compte, la page affiche alors la bonne étape.
+        // Le panier et les champs saisis sont conservés.
+        if (isUnauthenticated(error)) queryClient.setQueryData(queryKeys.account.me, null);
+        else void queryClient.invalidateQueries({ queryKey: queryKeys.account.me });
+        toast.error(isUnauthenticated(error) ? "Votre session a expiré. Reconnectez-vous pour finaliser votre commande." : "Changez d'abord votre mot de passe provisoire.");
+        return;
+      }
       if (isCartConflictError(error)) {
         // Stock ou produit modifié depuis l'ajout au panier : on réconcilie sans toucher aux champs saisis.
         const fresh = await productsQuery.refetch();

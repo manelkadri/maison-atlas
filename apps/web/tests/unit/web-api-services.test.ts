@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiAnalyticsService } from "@/services/api/analytics.api";
 import { apiAuthService } from "@/services/api/auth.api";
 import { apiCategoryService } from "@/services/api/categories.api";
+import { apiCustomerAccountService } from "@/services/api/customer-account.api";
 import { apiCustomerService } from "@/services/api/customers.api";
 import { apiInventoryService } from "@/services/api/inventory.api";
 import { apiNewsletterService } from "@/services/api/newsletter.api";
@@ -164,24 +165,32 @@ describe("catégories", () => {
 });
 
 describe("commandes", () => {
-  it("getOrderByNumber AVEC téléphone ⇒ route publique de suivi (numéro + téléphone)", async () => {
-    const { calls } = stubFetch(() => json({ id: "o1" }));
-    await apiOrderService.getOrderByNumber("CMD-2026-000001", "0555 12 34 56");
-    const url = new URL(calls[0]!.url, "http://x");
-    expect(url.pathname).toBe("/api/orders/track");
-    expect(url.searchParams.get("number")).toBe("CMD-2026-000001");
-    expect(url.searchParams.get("phone")).toBe("0555 12 34 56");
-  });
-
-  it("getOrderByNumber SANS téléphone ⇒ route admin by-number", async () => {
+  it("getOrderByNumber ⇒ route admin by-number", async () => {
     const { calls } = stubFetch(() => json({ id: "o1" }));
     await apiOrderService.getOrderByNumber("CMD-2026-000001");
     expect(calls[0]?.url).toBe("/api/admin/orders/by-number/CMD-2026-000001");
   });
 
-  it("getOrderByNumber : 404 ⇒ null (suivi public : même réponse quel que soit le motif)", async () => {
+  it("trackOrder ⇒ route publique de suivi (numéro + téléphone) ; 404 ⇒ null (même réponse quel que soit le motif)", async () => {
+    const { calls } = stubFetch(() => json({ orderNumber: "CMD-2026-000001" }));
+    await apiOrderService.trackOrder("CMD-2026-000001", "0555 12 34 56");
+    const url = new URL(calls[0]!.url, "http://x");
+    expect(url.pathname).toBe("/api/orders/track");
+    expect(url.searchParams.get("number")).toBe("CMD-2026-000001");
+    expect(url.searchParams.get("phone")).toBe("0555 12 34 56");
     stubFetch(() => apiError(404, "NOT_FOUND", "Commande introuvable."));
-    await expect(apiOrderService.getOrderByNumber("CMD-X", "0555123456")).resolves.toBeNull();
+    await expect(apiOrderService.trackOrder("CMD-X", "0555123456")).resolves.toBeNull();
+  });
+
+  it("createOrder ⇒ POST /orders ; non connectée (401) et mot de passe provisoire (403) gardent leur code", async () => {
+    const { calls } = stubFetch(() => json({ orderNumber: "CMD-2026-000001" }, 201));
+    await apiOrderService.createOrder({ customer: { firstName: "A", lastName: "B", phone: "0555123456" }, shippingAddress: { wilayaCode: "16", wilayaName: "Alger", commune: "X", address: "Y", deliveryMethod: "home" }, items: [{ variantId: "v1", quantity: 1 }] });
+    expect(calls[0]?.url).toBe("/api/orders");
+    expect(calls[0]?.init.method).toBe("POST");
+    stubFetch(() => apiError(401, "UNAUTHENTICATED", "Veuillez vous connecter."));
+    await expect(apiOrderService.createOrder({} as never)).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+    stubFetch(() => apiError(403, "PASSWORD_CHANGE_REQUIRED", "Changez votre mot de passe."));
+    await expect(apiOrderService.createOrder({} as never)).rejects.toMatchObject({ code: "PASSWORD_CHANGE_REQUIRED" });
   });
 
   it("getOrders : filtres admin, « all » omis", async () => {
@@ -240,14 +249,52 @@ describe("stock, clients, promotions, paramètres, statistiques", () => {
     expect(bodyOf(calls[0]!)).toEqual({ variantId: "v1", type: "in", quantity: 5, reason: "Réassort" });
   });
 
-  it("clients : liste et fiche (admin) ; findByPhone ⇒ TOUJOURS null, sans aucune requête", async () => {
-    const { calls, fn } = stubFetch(() => json([]));
+  it("clients : liste et fiche (admin) ; aucune recherche de cliente par téléphone n'existe côté public", async () => {
+    const { calls } = stubFetch(() => json([]));
     await apiCustomerService.getCustomers();
     await apiCustomerService.getCustomerById("c1");
     expect(calls.map((c) => c.url)).toEqual(["/api/admin/customers", "/api/admin/customers/c1"]);
-    fn.mockClear();
-    await expect(apiCustomerService.findByPhone("0555123456")).resolves.toBeNull();
-    expect(fn).not.toHaveBeenCalled();
+    expect("findByPhone" in apiCustomerService).toBe(false);
+  });
+
+  it("réinitialisation admin : POST avec le mot de passe de l'administrateur ; seul le mot de passe provisoire est renvoyé", async () => {
+    const { calls } = stubFetch(() => json({ customerId: "c1", temporaryPassword: "Prov-Abc123xyz", mustChangePassword: true }));
+    await expect(apiCustomerService.resetPassword("c1", "mot-de-passe-admin")).resolves.toEqual({ temporaryPassword: "Prov-Abc123xyz" });
+    expect(calls[0]?.url).toBe("/api/admin/customers/c1/reset-password");
+    expect(calls[0]?.init.method).toBe("POST");
+    expect(bodyOf(calls[0]!)).toEqual({ adminPassword: "mot-de-passe-admin" });
+    stubFetch(() => apiError(403, "FORBIDDEN", "Mot de passe incorrect."));
+    await expect(apiCustomerService.resetPassword("c1", "faux")).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("espace cliente : chaque appel vise /customers/*, l'identité ne passe jamais en paramètre", async () => {
+    const { calls } = stubFetch(() => json({ id: "c1" }));
+    await apiCustomerAccountService.register({ firstName: "A", lastName: "B", phone: "0555123456", wilayaCode: "16", commune: "X", address: "", password: "correct-horse-battery" });
+    await apiCustomerAccountService.login({ phone: "0555123456", password: "correct-horse-battery" });
+    await apiCustomerAccountService.me();
+    await apiCustomerAccountService.updateProfile({ firstName: "Z" });
+    await apiCustomerAccountService.changePassword({ currentPassword: "a".repeat(9), newPassword: "b".repeat(9) });
+    await apiCustomerAccountService.getMyOrders();
+    await apiCustomerAccountService.getMyOrder("CMD-2026-000001");
+    expect(calls.map((c) => `${c.init.method ?? "GET"} ${c.url}`)).toEqual([
+      "POST /api/customers/register",
+      "POST /api/customers/login",
+      "GET /api/customers/me",
+      "PATCH /api/customers/me",
+      "POST /api/customers/me/password",
+      "GET /api/customers/me/orders",
+      "GET /api/customers/me/orders/CMD-2026-000001",
+    ]);
+  });
+
+  it("espace cliente : me() sans session ⇒ null ; logout ⇒ POST ; getMyOrder introuvable ⇒ null", async () => {
+    stubFetch(() => apiError(401, "UNAUTHENTICATED", "Veuillez vous connecter."));
+    await expect(apiCustomerAccountService.me()).resolves.toBeNull();
+    const { calls } = stubFetch(() => noContent());
+    await apiCustomerAccountService.logout();
+    expect(`${calls[0]?.init.method} ${calls[0]?.url}`).toBe("POST /api/customers/logout");
+    stubFetch(() => apiError(404, "NOT_FOUND", "Commande introuvable."));
+    await expect(apiCustomerAccountService.getMyOrder("CMD-X")).resolves.toBeNull();
   });
 
   it("promotions : CRUD admin et validation publique", async () => {

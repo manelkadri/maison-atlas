@@ -7,26 +7,16 @@ import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OrderStatusBadge } from "@/components/ui/status-badge";
-import { useMyOrders } from "@/features/orders/hooks";
-import { isApiMode } from "@/lib/api-config";
-import { useCustomerSessionStore } from "@/stores/customer-session.store";
-import { countPieces, isOwnOrder, paymentCaption } from "./order-utils";
-import { TrackOrderForm } from "./track-order-form";
+import { useAccount, useMyOrders } from "@/features/account/hooks";
+import { countPieces, paymentCaption } from "./order-utils";
 
-/**
- * Historique des commandes, plus récentes d'abord.
- * Mode mock : commandes du téléphone du profil simulé. Mode API : commandes mémorisées sur cet appareil
- * (couples numéro + téléphone) + formulaire « Suivre une commande » pour en retrouver depuis un autre appareil.
- */
+/** Historique des commandes de la cliente connectée, plus récentes d'abord (le serveur filtre par la session). */
 export function OrdersList() {
-  const apiMode = isApiMode();
-  const profile = useCustomerSessionStore((s) => s.profile);
-  const { orders: fetched, isLoading, isError, refetch } = useMyOrders(profile?.phone);
-  if (!apiMode && !profile) return null;
+  const { data: profile } = useAccount();
+  const { data, isLoading, isError, refetch } = useMyOrders(!!profile);
+  if (!profile) return null;
 
-  // Mode mock : double filtrage défensif (jamais de commande d'un autre téléphone). Mode API : le serveur a déjà
-  // vérifié le couple numéro + téléphone de chaque commande.
-  const orders = (apiMode ? fetched : fetched.filter((o) => isOwnOrder(o, profile?.phone))).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const orders = [...(data ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return (
     <div>
@@ -53,11 +43,7 @@ export function OrdersList() {
         <EmptyState
           icon={Package}
           title="Vous n'avez pas encore de commande"
-          description={
-            apiMode
-              ? "Les commandes passées depuis cet appareil apparaissent ici. Pour une commande passée ailleurs, utilisez le formulaire de suivi ci-dessous."
-              : "Dès que vous aurez passé une commande avec ce numéro de téléphone, vous pourrez la suivre ici."
-          }
+          description="Dès que vous aurez passé une commande, vous pourrez la suivre ici."
           action={
             <Link href="/shop" className="bg-primary text-primary-foreground inline-flex h-11 items-center rounded-md px-6 text-sm font-medium">
               Découvrir la boutique
@@ -105,18 +91,6 @@ export function OrdersList() {
             );
           })}
         </ul>
-      )}
-
-      {apiMode && (
-        <section aria-labelledby="track-order-title" className="bg-card mt-10 rounded-md border p-5 sm:p-6">
-          <h2 id="track-order-title" className="font-display text-xl">
-            Suivre une commande
-          </h2>
-          <p className="text-muted-foreground mt-1 mb-5 text-sm">
-            Saisissez le numéro de commande et le téléphone utilisé pour la retrouver, même depuis un autre appareil.
-          </p>
-          <TrackOrderForm />
-        </section>
       )}
     </div>
   );

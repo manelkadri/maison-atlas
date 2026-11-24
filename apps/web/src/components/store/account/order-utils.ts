@@ -10,7 +10,7 @@ export function isOwnOrder(order: Pick<Order, "customer">, sessionPhone: string 
   return normalizePhone(order.customer.phone) === normalizePhone(sessionPhone);
 }
 
-export function countPieces(order: Pick<Order, "items">): number {
+export function countPieces(order: { items: ReadonlyArray<{ quantity: number }> }): number {
   return order.items.reduce((sum, item) => sum + item.quantity, 0);
 }
 

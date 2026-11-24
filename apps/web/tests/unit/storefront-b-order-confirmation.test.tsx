@@ -9,6 +9,7 @@ import { buildCreateOrderInput } from "@/features/checkout/place-order";
 import { makeQueryClient } from "@/lib/query-client";
 import { orderService, productService } from "@/services";
 import { resetDb } from "@/services/mock/db";
+import { useCustomerSessionStore } from "@/stores/customer-session.store";
 
 vi.mock("next/image", () => ({
   default: ({ fill: _fill, priority: _priority, ...props }: ComponentProps<"img"> & { fill?: boolean; priority?: boolean }) => <img {...props} alt={props.alt ?? ""} />,
@@ -19,6 +20,8 @@ const wrap = (ui: React.ReactNode) => render(<QueryClientProvider client={makeQu
 describe("confirmation de commande", () => {
   beforeEach(() => {
     resetDb();
+    // La confirmation n'est montrée qu'à la cliente connectée (ici, session simulée du mode mock).
+    useCustomerSessionStore.setState({ profile: { firstName: "Sara", lastName: "Haddad", phone: "0661234567", email: "" } });
   });
 
   it("affiche numéro, récapitulatif, livraison en bureau, statut et prochaines étapes", async () => {

@@ -9,7 +9,7 @@ import {
   ORDER_STATUS_LABELS,
 } from "@fashion/shared";
 import type { Customer } from "@/types/customer.types";
-import type { Order, OrderFilters, OrderItem, PaymentStatus } from "@/types/order.types";
+import type { Order, OrderFilters, OrderItem, PaymentStatus, PublicTrackedOrder } from "@/types/order.types";
 import type { OrderService } from "./contracts";
 import { ServiceError } from "./errors";
 import { commit, getDb, nextId } from "./mock/db";
@@ -33,6 +33,42 @@ function matchesFilters(order: Order, f: OrderFilters): boolean {
   return true;
 }
 
+/** Même liste blanche que l'API (`PublicTrackedOrder`) : le suivi public ne montre que le strict nécessaire. */
+export function toPublicTrackedOrder(o: Order): PublicTrackedOrder {
+  return {
+    orderNumber: o.orderNumber,
+    status: o.status,
+    statusHistory: o.statusHistory.map((h) => ({ status: h.status, at: h.at })),
+    paymentMethod: o.paymentMethod,
+    paymentStatus: o.paymentStatus,
+    customer: { firstName: o.customer.firstName },
+    shippingAddress: {
+      wilayaName: o.shippingAddress.wilayaName,
+      commune: o.shippingAddress.commune,
+      deliveryMethod: o.shippingAddress.deliveryMethod,
+      ...(o.shippingAddress.pickupPointName ? { pickupPointName: o.shippingAddress.pickupPointName } : {}),
+    },
+    items: o.items.map((i) => ({
+      productName: i.productName,
+      productSlug: i.productSlug,
+      color: i.color,
+      colorCode: i.colorCode,
+      size: i.size,
+      imageUrl: i.imageUrl,
+      unitPrice: i.unitPrice,
+      quantity: i.quantity,
+      lineTotal: i.lineTotal,
+    })),
+    subtotal: o.subtotal,
+    discountTotal: o.discountTotal,
+    ...(o.promoCode ? { promoCode: o.promoCode } : {}),
+    shippingFee: o.shippingFee,
+    total: o.total,
+    createdAt: o.createdAt,
+    updatedAt: o.updatedAt,
+  };
+}
+
 export const orderService: OrderService = {
   async getOrders(filters = {}) {
     return structuredClone(
@@ -47,12 +83,16 @@ export const orderService: OrderService = {
     return o ? structuredClone(o) : null;
   },
 
-  async getOrderByNumber(orderNumber, phone) {
+  async getOrderByNumber(orderNumber) {
     const o = getDb().orders.find((x) => x.orderNumber === orderNumber);
-    if (!o) return null;
-    // Suivi public : le téléphone doit correspondre (comme `GET /orders/track` côté API).
-    if (phone !== undefined && normalizePhone(o.customer.phone) !== normalizePhone(phone)) return null;
-    return structuredClone(o);
+    return o ? structuredClone(o) : null;
+  },
+
+  async trackOrder(orderNumber, phone) {
+    const o = getDb().orders.find((x) => x.orderNumber === orderNumber);
+    // Le téléphone doit correspondre (comme `GET /orders/track` côté API) : même réponse dans les deux cas.
+    if (!o || normalizePhone(o.customer.phone) !== normalizePhone(phone)) return null;
+    return toPublicTrackedOrder(o);
   },
 
   async createOrder(input) {

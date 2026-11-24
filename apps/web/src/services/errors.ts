@@ -5,6 +5,8 @@ export type ServiceErrorCode =
   | "OUT_OF_STOCK"
   | "INVALID_TRANSITION"
   | "FORBIDDEN"
+  /** Le mot de passe provisoire (réinitialisation par l'administrateur) doit d'abord être changé. */
+  | "PASSWORD_CHANGE_REQUIRED"
   // Codes ajoutés avec l'API réelle (voir docs/API_CONTRACT.md).
   | "UNAUTHENTICATED"
   | "RATE_LIMITED"
@@ -19,6 +21,7 @@ export const SERVICE_ERROR_CODES: readonly ServiceErrorCode[] = [
   "OUT_OF_STOCK",
   "INVALID_TRANSITION",
   "FORBIDDEN",
+  "PASSWORD_CHANGE_REQUIRED",
   "UNAUTHENTICATED",
   "RATE_LIMITED",
   "NOT_CONFIGURED",

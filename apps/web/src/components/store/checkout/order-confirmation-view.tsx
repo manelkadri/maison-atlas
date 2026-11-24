@@ -5,12 +5,11 @@ import { Building2, CheckCircle2, Copy, Home, PackageSearch, PhoneCall, Truck, W
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
-import { TrackOrderForm } from "@/components/store/account/track-order-form";
 import { TotalsBreakdown } from "@/components/store/cart/totals-breakdown";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OrderStatusBadge, ToneBadge } from "@/components/ui/status-badge";
-import { useTrackedOrder } from "@/features/orders/hooks";
+import { useAccount, useMyOrder } from "@/features/account/hooks";
 import { OrderLines, orderItemToLine } from "./order-lines";
 
 const NEXT_STEPS = [
@@ -20,7 +19,8 @@ const NEXT_STEPS = [
 ] as const;
 
 export function OrderConfirmationView({ orderNumber }: { orderNumber?: string }) {
-  const { data: order, isPending, isError, refetch, needsPhone } = useTrackedOrder(orderNumber);
+  const account = useAccount();
+  const { data: order, isPending, isError, refetch } = useMyOrder(orderNumber, !!account.data);
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {
@@ -48,17 +48,33 @@ export function OrderConfirmationView({ orderNumber }: { orderNumber?: string })
     );
   }
 
-  if (needsPhone) {
-    // Mode API : le téléphone n'est pas mémorisé sur cet appareil → le numéro seul ne suffit pas (aucune fuite de données).
+  if (account.isPending) {
     return (
       <Shell>
-        <div className="mx-auto max-w-md space-y-4">
-          <h1 className="font-display text-2xl">Retrouvez votre commande</h1>
-          <p className="text-muted-foreground text-sm leading-relaxed">
-            Pour protéger vos données, saisissez le numéro de téléphone utilisé lors de la commande {orderNumber}.
-          </p>
-          <TrackOrderForm initialOrderNumber={orderNumber} />
-        </div>
+        <div className="bg-secondary h-72 animate-pulse rounded-lg" aria-busy="true" aria-label="Chargement de votre commande" />
+      </Shell>
+    );
+  }
+
+  if (!account.data) {
+    // Le détail d'une commande n'est montré qu'à sa propriétaire, connectée.
+    return (
+      <Shell>
+        <EmptyState
+          icon={PackageSearch}
+          title="Connectez-vous pour voir votre commande"
+          description={`Votre commande ${orderNumber} est enregistrée dans votre compte. Connectez-vous pour la consulter, ou utilisez le suivi avec votre numéro et votre téléphone.`}
+          action={
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <Button asChild className="h-11">
+                <Link href="/account">Me connecter</Link>
+              </Button>
+              <Button asChild variant="outline" className="h-11">
+                <Link href={`/track`}>Suivre sans compte</Link>
+              </Button>
+            </div>
+          }
+        />
       </Shell>
     );
   }
@@ -93,7 +109,7 @@ export function OrderConfirmationView({ orderNumber }: { orderNumber?: string })
         <EmptyState
           icon={PackageSearch}
           title="Commande introuvable"
-          description={`Nous ne trouvons aucune commande « ${orderNumber} » sur cet appareil. Vérifiez le numéro ou retrouvez vos commandes dans votre espace.`}
+          description={`Nous ne trouvons aucune commande « ${orderNumber} » dans votre compte. Vérifiez le numéro ou retrouvez vos commandes dans votre espace.`}
           action={<Actions />}
         />
       </Shell>

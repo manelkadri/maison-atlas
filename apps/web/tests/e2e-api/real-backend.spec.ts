@@ -25,8 +25,21 @@ async function adminLogin(page: Page, password = ADMIN.password) {
   await page.getByRole("button", { name: /se connecter/i }).click();
 }
 
-/** Passe une commande invité (livraison à domicile) et retourne son numéro. */
+const CUSTOMER_PASSWORD = "correct-horse-battery";
+
+/** Ouvre une session cliente (compte créé au besoin) : le cookie `customer_session` est posé dans le contexte du navigateur. */
+async function customerSession(page: Page, who: { last: string; first: string; phone: string }) {
+  const login = await page.request.post("/api/customers/login", { data: { phone: who.phone, password: CUSTOMER_PASSWORD } });
+  if (login.ok()) return;
+  const created = await page.request.post("/api/customers/register", {
+    data: { firstName: who.first, lastName: who.last, phone: who.phone, wilayaCode: "46", commune: "Aïn Témouchent", address: "", password: CUSTOMER_PASSWORD },
+  });
+  expect(created.status(), await created.text()).toBe(201);
+}
+
+/** Passe une commande en cliente connectée (livraison à domicile) et retourne son numéro. */
 async function placeGuestOrder(page: Page, who: { last: string; first: string; phone: string }) {
+  await customerSession(page, who);
   await page.goto("/product/pantalon-chino");
   await page.getByRole("button", { name: /^Taille [^,]+$/ }).first().click();
   await page.getByRole("button", { name: "Ajouter au panier" }).first().click();

@@ -98,6 +98,20 @@ test.describe("boutique — parcours client", () => {
     await page.getByRole("button", { name: "Ajouter au panier" }).first().click();
     await page.goto("/checkout");
 
+    // La commande exige un compte : sans connexion, la connexion est proposée et le panier est conservé.
+    await expect(page.getByRole("heading", { name: /connectez-vous pour commander/i })).toBeVisible();
+    // Connexion simulée (mode démonstration) : profil enregistré dans le navigateur, puis rechargement.
+    await page.evaluate(() =>
+      localStorage.setItem(
+        "fashion-customer-demo-session",
+        JSON.stringify({ state: { profile: { firstName: "Amina", lastName: "Benali", phone: "0555123456", email: "" } }, version: 1 }),
+      ),
+    );
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Confirmer la commande" })).toBeVisible();
+    for (const label of ["Prénom", "Téléphone"]) await page.getByRole("textbox", { name: label }).fill("");
+    await page.getByRole("textbox", { name: "Nom", exact: true }).fill("");
+
     // Soumission vide : erreurs en français
     await page.getByRole("button", { name: "Confirmer la commande" }).click();
     await expect(page.getByRole("alert").first()).toBeVisible();

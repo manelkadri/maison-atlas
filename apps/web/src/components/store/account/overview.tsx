@@ -6,10 +6,7 @@ import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { OrderStatusBadge } from "@/components/ui/status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useMyOrders } from "@/features/orders/hooks";
-import { isApiMode } from "@/lib/api-config";
-import { useCustomerSessionStore } from "@/stores/customer-session.store";
-import { isOwnOrder } from "./order-utils";
+import { useAccount, useMyOrders } from "@/features/account/hooks";
 
 const quickLinks = [
   { label: "Mes commandes", description: "Suivre et consulter vos achats", href: "/account/orders", icon: Package },
@@ -19,12 +16,12 @@ const quickLinks = [
 ] as const;
 
 export function AccountOverview() {
-  const profile = useCustomerSessionStore((s) => s.profile);
-  const { orders, isLoading, isError } = useMyOrders(profile?.phone);
+  const { data: profile } = useAccount();
+  const { data, isLoading, isError } = useMyOrders(!!profile);
   if (!profile) return null;
 
-  // Mode API : les commandes sont déjà vérifiées (numéro + téléphone) par le serveur.
-  const sorted = (isApiMode() ? orders : orders.filter((o) => isOwnOrder(o, profile.phone))).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  // Le serveur ne renvoie que les commandes de la cliente connectée (identité = session).
+  const sorted = [...(data ?? [])].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const last = sorted[0];
 
   return (
@@ -53,7 +50,7 @@ export function AccountOverview() {
           <EmptyState
             icon={Package}
             title="Aucune commande pour le moment"
-            description="Vos commandes passées avec ce numéro de téléphone apparaîtront ici."
+            description="Vos commandes apparaîtront ici dès que vous en aurez passé une."
             action={
               <Link href="/shop" className="text-sm font-medium underline underline-offset-4">
                 Découvrir la boutique

@@ -22,7 +22,7 @@ export const queryKeys = {
     all: ["orders"] as const,
     list: (filters?: OrderFilters) => ["orders", "list", filters ?? {}] as const,
     byId: (id: string) => ["orders", "id", id] as const,
-    byNumber: (n: string, phone?: string) => ["orders", "number", n, phone ?? null] as const,
+    byNumber: (n: string) => ["orders", "number", n] as const,
   },
   inventory: {
     all: ["inventory"] as const,
@@ -35,6 +35,12 @@ export const queryKeys = {
     byId: (id: string) => ["customers", "id", id] as const,
   },
   auth: { me: ["auth", "me"] as const },
+  account: {
+    me: ["account", "me"] as const,
+    orders: ["account", "orders"] as const,
+    order: (number: string) => ["account", "orders", number] as const,
+  },
+  tracking: (number: string) => ["tracking", number] as const,
   promotions: { all: ["promotions"] as const },
   settings: { all: ["settings"] as const },
   analytics: {

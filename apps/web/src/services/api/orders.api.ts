@@ -1,5 +1,5 @@
 import { apiFetch, apiFetchOrNull, type ApiQuery } from "@/lib/api-client";
-import type { Order, OrderFilters } from "@/types/order.types";
+import type { CustomerOrder, Order, OrderFilters, PublicTrackedOrder } from "@/types/order.types";
 import type { OrderService } from "../contracts";
 
 const seg = encodeURIComponent;
@@ -23,13 +23,12 @@ export const apiOrderService: OrderService = {
 
   getOrderById: (id) => apiFetchOrNull<Order>(`/admin/orders/${seg(id)}`),
 
-  getOrderByNumber(orderNumber, phone) {
-    // Avec téléphone : route publique de suivi (numéro ET téléphone). Sans : route administrateur.
-    if (phone !== undefined) return apiFetchOrNull<Order>("/orders/track", { query: { number: orderNumber, phone } });
-    return apiFetchOrNull<Order>(`/admin/orders/by-number/${seg(orderNumber)}`);
-  },
+  getOrderByNumber: (orderNumber) => apiFetchOrNull<Order>(`/admin/orders/by-number/${seg(orderNumber)}`),
 
-  createOrder: (input) => apiFetch<Order>("/orders", { method: "POST", body: input }),
+  /** Route publique de suivi (numéro ET téléphone) : 404 ⇒ `null`, sans distinguer numéro inconnu et mauvais téléphone. */
+  trackOrder: (orderNumber, phone) => apiFetchOrNull<PublicTrackedOrder>("/orders/track", { query: { number: orderNumber, phone } }),
+
+  createOrder: (input) => apiFetch<CustomerOrder>("/orders", { method: "POST", body: input }),
 
   updateOrderStatus: (id, status, note) =>
     apiFetch<Order>(`/admin/orders/${seg(id)}/status`, {

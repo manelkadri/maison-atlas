@@ -83,7 +83,7 @@ describe("sélection mock / api de services/index.ts", () => {
 });
 
 describe("mock : contrats ajustés restent rétro-compatibles", () => {
-  it("getOrderByNumber sans téléphone : comportement d'origine ; avec téléphone : doit correspondre", async () => {
+  it("getOrderByNumber (admin) par numéro ; trackOrder (public) : numéro ET téléphone, vue minimale", async () => {
     vi.stubEnv("NEXT_PUBLIC_DATA_SOURCE", "mock");
     vi.resetModules();
     const { orderService } = await import("@/services");
@@ -91,9 +91,12 @@ describe("mock : contrats ajustés restent rétro-compatibles", () => {
     expect(first).toBeDefined();
     const number = first!.orderNumber;
     expect((await orderService.getOrderByNumber(number))?.orderNumber).toBe(number);
-    expect((await orderService.getOrderByNumber(number, first!.customer.phone))?.orderNumber).toBe(number);
-    expect(await orderService.getOrderByNumber(number, "0555000000")).toBeNull();
-    expect(await orderService.getOrderByNumber("CMD-0000-000000", first!.customer.phone)).toBeNull();
+    const tracked = await orderService.trackOrder(number, first!.customer.phone);
+    expect(tracked?.orderNumber).toBe(number);
+    expect(tracked?.customer).toEqual({ firstName: first!.customer.firstName });
+    expect(JSON.stringify(tracked)).not.toMatch(/unitCost|customerId|"phone"|"lastName"|"email"|"note"/);
+    expect(await orderService.trackOrder(number, "0555000000")).toBeNull();
+    expect(await orderService.trackOrder("CMD-0000-000000", first!.customer.phone)).toBeNull();
   });
 
   it("authService mock : login accepte tout, me() reflète le store de session simulé", async () => {

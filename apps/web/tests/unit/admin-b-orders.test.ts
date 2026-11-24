@@ -28,7 +28,7 @@ async function createTestOrder(quantity = 2): Promise<{ order: Order; variantId:
     shippingAddress: { wilayaCode: "16", wilayaName: "Alger", commune: "Bab Ezzouar", address: "12 rue Test", deliveryMethod: "home" },
     items: [{ variantId: variant.id, quantity }],
   };
-  const order = await orderService.createOrder(input);
+  const order = (await orderService.createOrder(input)) as Order; // le mock renvoie la commande complète
   return { order, variantId: variant.id, stockBefore: variant.stock };
 }
 

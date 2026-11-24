@@ -1,7 +1,7 @@
-import { normalizePhone } from "@fashion/shared";
 import type { Customer, CustomerSummary } from "@/types/customer.types";
 import type { Order } from "@/types/order.types";
 import type { CustomerService } from "./contracts";
+import { ServiceError } from "./errors";
 import { getDb } from "./mock/db";
 
 function summarize(customer: Customer, orders: Order[]): CustomerSummary {
@@ -30,9 +30,9 @@ export const customerService: CustomerService = {
     return structuredClone({ customer: summarize(customer, orders), orders: mine });
   },
 
-  async findByPhone(phone) {
-    const key = normalizePhone(phone);
-    const c = getDb().customers.find((x) => normalizePhone(x.phone) === key);
-    return c ? structuredClone(c) : null;
+  /** Démonstration : un mot de passe provisoire factice (aucun compte réel en mode mock). */
+  async resetPassword(customerId) {
+    if (!getDb().customers.some((c) => c.id === customerId)) throw new ServiceError("NOT_FOUND", "Cliente introuvable.");
+    return { temporaryPassword: "Demo-Provisoire1" };
   },
 };

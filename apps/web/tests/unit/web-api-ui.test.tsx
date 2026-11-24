@@ -20,13 +20,14 @@ vi.mock("sonner", () => ({ toast: { success: (...a: unknown[]) => toastSuccess(.
 
 import { SessionGuard } from "@/components/admin/shell/session-guard";
 import { AdminLoginForm } from "@/components/admin/shell/login-form";
-import { TrackOrderForm } from "@/components/store/account/track-order-form";
+import { AccountShell } from "@/components/store/account/account-shell";
 import { OrdersList } from "@/components/store/account/orders-list";
+import { PublicTracking } from "@/components/store/account/public-tracking";
+import { TrackOrderForm } from "@/components/store/account/track-order-form";
 import { OrderConfirmationView } from "@/components/store/checkout/order-confirmation-view";
 import { NewsletterForm } from "@/components/store/newsletter-form";
 import { orderService as mockOrders } from "@/services/orders.service";
 import { useAdminSessionStore } from "@/stores/admin-session.store";
-import { usePlacedOrdersStore } from "@/stores/placed-orders.store";
 import type { Order } from "@/types/order.types";
 import { apiError, json, noContent, stubFetch } from "./web-api-helpers";
 
@@ -44,7 +45,6 @@ beforeEach(async () => {
   push.mockClear();
   toastSuccess.mockClear();
   useAdminSessionStore.setState({ isAuthenticated: false, email: null });
-  usePlacedOrdersStore.setState({ orders: [] });
   const [first] = await mockOrders.getOrders();
   order = first!;
 });
@@ -133,72 +133,118 @@ describe("mode API : connexion admin", () => {
   });
 });
 
-describe("store des commandes mémorisées", () => {
-  it("mémorise le couple, remplace un doublon (le plus récent en tête) et plafonne la liste", () => {
-    const { remember } = usePlacedOrdersStore.getState();
-    remember({ orderNumber: "CMD-1", phone: "0555000001", createdAt: "2026-01-01T10:00:00.000Z" });
-    remember({ orderNumber: "CMD-2", phone: "0555000002", createdAt: "2026-01-02T10:00:00.000Z" });
-    remember({ orderNumber: "CMD-1", phone: "0555000009", createdAt: "2026-01-01T10:00:00.000Z" });
-    expect(usePlacedOrdersStore.getState().orders.map((o) => `${o.orderNumber}:${o.phone}`)).toEqual(["CMD-1:0555000009", "CMD-2:0555000002"]);
+/** Commande telle que la renvoie l'API à sa propriétaire : sans prix de revient ni notes internes. */
+function customerView(o: Order) {
+  return {
+    ...o,
+    items: o.items.map(({ unitCost: _cost, ...rest }) => rest),
+    statusHistory: o.statusHistory.map(({ note: _note, ...rest }) => rest),
+  };
+}
 
-    usePlacedOrdersStore.getState().clear();
-    for (let i = 0; i < 60; i++) remember({ orderNumber: `CMD-${i}`, phone: "0555000000", createdAt: "2026-01-01T00:00:00.000Z" });
-    const stored = usePlacedOrdersStore.getState().orders;
-    expect(stored).toHaveLength(50);
-    expect(stored[0]?.orderNumber).toBe("CMD-59");
+const ACCOUNT = {
+  id: "c1",
+  firstName: "Amina",
+  lastName: "Benali",
+  phone: "0555123456",
+  wilayaCode: "16",
+  commune: "Bab Ezzouar",
+  address: "",
+  mustChangePassword: false,
+};
+
+/** Simulacre du serveur : route → réponse. Toute route non prévue fait échouer le test (jamais d'appel inattendu). */
+function server(routes: Record<string, () => Response>) {
+  return stubFetch((call) => {
+    const path = new URL(call.url, "http://x").pathname;
+    const handler = routes[`${call.init.method ?? "GET"} ${path}`];
+    if (!handler) throw new Error(`appel inattendu : ${call.init.method ?? "GET"} ${path}`);
+    return handler();
   });
+}
 
-  it("est persisté dans le localStorage (numéro, téléphone, date seulement)", () => {
-    usePlacedOrdersStore.getState().remember({ orderNumber: "CMD-7", phone: "0555123456", createdAt: "2026-01-01T00:00:00.000Z" });
-    const raw = JSON.parse(window.localStorage.getItem("fashion-placed-orders") ?? "{}") as { state: { orders: unknown[] } };
-    expect(raw.state.orders).toEqual([{ orderNumber: "CMD-7", phone: "0555123456", createdAt: "2026-01-01T00:00:00.000Z" }]);
-  });
-
-  it("forget retire une commande", () => {
-    const { remember, forget } = usePlacedOrdersStore.getState();
-    remember({ orderNumber: "CMD-1", phone: "0555000001", createdAt: "x" });
-    forget("CMD-1");
-    expect(usePlacedOrdersStore.getState().orders).toEqual([]);
-  });
-});
-
-describe("mode API : « Mes commandes » (jamais de liste par téléphone seul)", () => {
-  it("relit chaque commande mémorisée avec son couple numéro + téléphone, uniquement via la route publique de suivi", async () => {
-    usePlacedOrdersStore.setState({ orders: [{ orderNumber: order.orderNumber, phone: order.customer.phone, createdAt: order.createdAt }] });
-    const { calls } = stubFetch(() => json(order));
+describe("mode API : espace cliente (identité = session côté serveur)", () => {
+  it("« Mes commandes » : une seule requête GET /customers/me/orders, sans téléphone ni numéro, jamais de route admin ni de suivi public", async () => {
+    const { calls } = server({
+      "GET /api/customers/me": () => json(ACCOUNT),
+      "GET /api/customers/me/orders": () => json([customerView(order)]),
+    });
     render(<OrdersList />, { wrapper: wrapper() });
     expect(await screen.findByText(order.orderNumber)).toBeInTheDocument();
-    expect(calls).toHaveLength(1);
-    const url = new URL(calls[0]!.url, "http://x");
-    expect(url.pathname).toBe("/api/orders/track");
-    expect(url.searchParams.get("number")).toBe(order.orderNumber);
-    expect(url.searchParams.get("phone")).toBe(order.customer.phone);
-    expect(calls.some((c) => c.url.includes("/admin/"))).toBe(false);
+    const orderCalls = calls.filter((c) => c.url.includes("/orders"));
+    expect(orderCalls).toHaveLength(1);
+    expect(new URL(orderCalls[0]!.url, "http://x").search).toBe("");
+    expect(calls.some((c) => c.url.includes("/admin/") || c.url.includes("/orders/track"))).toBe(false);
   });
 
-  it("aucune commande mémorisée : aucun appel réseau, état vide et formulaire de suivi", async () => {
-    const { fn } = stubFetch(() => json(order));
+  it("aucune commande : état vide, pas de formulaire de suivi mémorisant quoi que ce soit", async () => {
+    server({ "GET /api/customers/me": () => json(ACCOUNT), "GET /api/customers/me/orders": () => json([]) });
     render(<OrdersList />, { wrapper: wrapper() });
     expect(await screen.findByText(/pas encore de commande/i)).toBeInTheDocument();
-    expect(screen.getByRole("form", { name: /suivre une commande/i })).toBeInTheDocument();
-    expect(fn).not.toHaveBeenCalled();
+    expect(window.localStorage.getItem("fashion-placed-orders")).toBeNull();
   });
 
-  it("une commande introuvable (404) est ignorée sans casser la liste", async () => {
-    usePlacedOrdersStore.setState({
-      orders: [
-        { orderNumber: "CMD-0000-000000", phone: "0555000000", createdAt: "2026-01-01T00:00:00.000Z" },
-        { orderNumber: order.orderNumber, phone: order.customer.phone, createdAt: order.createdAt },
-      ],
+  it("visiteuse non connectée (401) : l'espace propose la connexion, aucune commande n'est demandée", async () => {
+    const { calls } = server({ "GET /api/customers/me": () => apiError(401, "UNAUTHENTICATED", "Veuillez vous connecter.") });
+    render(
+      <AccountShell>
+        <p>contenu protégé</p>
+      </AccountShell>,
+      { wrapper: wrapper() },
+    );
+    expect(await screen.findByRole("form", { name: "Connexion" })).toBeInTheDocument();
+    expect(screen.queryByText("contenu protégé")).not.toBeInTheDocument();
+    expect(calls.some((c) => c.url.includes("/orders"))).toBe(false);
+  });
+
+  it("mot de passe provisoire : seul le formulaire de changement est proposé, pas le contenu", async () => {
+    server({ "GET /api/customers/me": () => json({ ...ACCOUNT, mustChangePassword: true }) });
+    render(
+      <AccountShell>
+        <p>contenu protégé</p>
+      </AccountShell>,
+      { wrapper: wrapper() },
+    );
+    expect(await screen.findByRole("form", { name: /choisir un nouveau mot de passe/i })).toBeInTheDocument();
+    expect(screen.queryByText("contenu protégé")).not.toBeInTheDocument();
+  });
+
+  it("connexion : POST /customers/login avec téléphone + mot de passe, puis le compte est connu", async () => {
+    const user = userEvent.setup();
+    const { calls } = server({
+      "GET /api/customers/me": () => apiError(401, "UNAUTHENTICATED", "Veuillez vous connecter."),
+      "POST /api/customers/login": () => json(ACCOUNT),
     });
-    stubFetch((call) => (call.url.includes("CMD-0000-000000") ? apiError(404, "NOT_FOUND", "Introuvable.") : json(order)));
-    render(<OrdersList />, { wrapper: wrapper() });
-    expect(await screen.findByText(order.orderNumber)).toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    render(
+      <AccountShell>
+        <p>contenu protégé</p>
+      </AccountShell>,
+      { wrapper: wrapper() },
+    );
+    await user.type(await screen.findByLabelText(/numéro de téléphone/i), "0555 12 34 56");
+    await user.type(screen.getByLabelText(/^mot de passe/i), "correct-horse-battery");
+    await user.click(screen.getByRole("button", { name: /me connecter/i }));
+    expect(await screen.findByText("contenu protégé")).toBeInTheDocument();
+    const login = calls.find((c) => c.url === "/api/customers/login")!;
+    expect(JSON.parse(String(login.init.body))).toEqual({ phone: "0555 12 34 56", password: "correct-horse-battery" });
+  });
+
+  it("connexion refusée : message du serveur affiché, mot de passe jamais conservé dans l'interface", async () => {
+    const user = userEvent.setup();
+    server({
+      "GET /api/customers/me": () => apiError(401, "UNAUTHENTICATED", "Veuillez vous connecter."),
+      "POST /api/customers/login": () => apiError(401, "UNAUTHENTICATED", "Numéro ou mot de passe incorrect."),
+    });
+    render(<AccountShell>x</AccountShell>, { wrapper: wrapper() });
+    await user.type(await screen.findByLabelText(/numéro de téléphone/i), "0555123456");
+    await user.type(screen.getByLabelText(/^mot de passe/i), "mauvais-mot-de-passe");
+    await user.click(screen.getByRole("button", { name: /me connecter/i }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Numéro ou mot de passe incorrect.");
+    expect(window.localStorage.length === 0 || !JSON.stringify({ ...window.localStorage }).includes("mauvais-mot-de-passe")).toBe(true);
   });
 });
 
-describe("mode API : suivre une commande", () => {
+describe("mode API : suivre une commande sans compte", () => {
   async function fill(user: ReturnType<typeof userEvent.setup>, number: string, phone: string) {
     await user.clear(screen.getByLabelText(/numéro de commande/i));
     await user.type(screen.getByLabelText(/numéro de commande/i), number);
@@ -206,56 +252,95 @@ describe("mode API : suivre une commande", () => {
     await user.click(screen.getByRole("button", { name: /suivre ma commande/i }));
   }
 
-  it("couple valide : interroge /orders/track, mémorise le couple et prévient", async () => {
+  const publicView = {
+    orderNumber: "CMD-2026-000001",
+    status: "confirmed",
+    statusHistory: [{ status: "pending", at: "2026-01-01T10:00:00.000Z" }, { status: "confirmed", at: "2026-01-01T11:00:00.000Z" }],
+    paymentMethod: "cash_on_delivery",
+    paymentStatus: "pending",
+    customer: { firstName: "Amina" },
+    shippingAddress: { wilayaName: "Oran", commune: "Es Senia", deliveryMethod: "home" },
+    items: [{ productName: "Robe", productSlug: "robe", color: "Noir", colorCode: "#000", size: "M", imageUrl: "/x.jpg", unitPrice: 10000, quantity: 1, lineTotal: 10000 }],
+    subtotal: 10000,
+    discountTotal: 0,
+    shippingFee: 600,
+    total: 10600,
+    createdAt: "2026-01-01T10:00:00.000Z",
+    updatedAt: "2026-01-01T11:00:00.000Z",
+  };
+
+  it("couple valide : interroge /orders/track (numéro en majuscules) ; rien n'est mémorisé sur l'appareil", async () => {
     const user = userEvent.setup();
     const onFound = vi.fn();
-    const { calls } = stubFetch(() => json(order));
+    const { calls } = stubFetch(() => json(publicView));
+    const before = JSON.stringify({ ...window.localStorage });
     render(<TrackOrderForm onFound={onFound} />, { wrapper: wrapper() });
-    await fill(user, order.orderNumber.toLowerCase(), "0555 12 34 56");
-    await waitFor(() => expect(onFound).toHaveBeenCalled());
+    await fill(user, "cmd-2026-000001", "0555 12 34 56");
+    await waitFor(() => expect(onFound).toHaveBeenCalledWith(publicView));
     const url = new URL(calls[0]!.url, "http://x");
     expect(url.pathname).toBe("/api/orders/track");
-    expect(url.searchParams.get("number")).toBe(order.orderNumber); // normalisé en majuscules
+    expect(url.searchParams.get("number")).toBe("CMD-2026-000001");
     expect(url.searchParams.get("phone")).toBe("0555 12 34 56");
-    expect(usePlacedOrdersStore.getState().orders[0]).toMatchObject({ orderNumber: order.orderNumber, phone: "0555 12 34 56" });
+    expect(JSON.stringify({ ...window.localStorage })).toBe(before); // ni numéro ni téléphone conservés
   });
 
-  it("couple inconnu : message unique, rien n'est mémorisé", async () => {
+  it("couple inconnu : message unique (ne distingue pas numéro inconnu et mauvais téléphone)", async () => {
     const user = userEvent.setup();
+    const onFound = vi.fn();
     stubFetch(() => apiError(404, "NOT_FOUND", "Commande introuvable."));
-    render(<TrackOrderForm />, { wrapper: wrapper() });
+    render(<TrackOrderForm onFound={onFound} />, { wrapper: wrapper() });
     await fill(user, "CMD-2026-999999", "0555123456");
     expect(await screen.findByRole("alert")).toHaveTextContent(/aucune commande ne correspond/i);
-    expect(usePlacedOrdersStore.getState().orders).toEqual([]);
+    expect(onFound).not.toHaveBeenCalled();
   });
 
   it("téléphone invalide : erreur locale, aucun appel réseau", async () => {
     const user = userEvent.setup();
-    const { fn } = stubFetch(() => json(order));
-    render(<TrackOrderForm />, { wrapper: wrapper() });
+    const { fn } = stubFetch(() => json(publicView));
+    render(<TrackOrderForm onFound={vi.fn()} />, { wrapper: wrapper() });
     await fill(user, "CMD-2026-000001", "123");
     expect(await screen.findByRole("alert")).toHaveTextContent(/numéro invalide/i);
     expect(fn).not.toHaveBeenCalled();
   });
+
+  it("la page affiche le suivi minimal : prénom absent du DOM de livraison, ni téléphone, ni adresse, ni note", async () => {
+    const user = userEvent.setup();
+    stubFetch(() => json(publicView));
+    render(<PublicTracking />, { wrapper: wrapper() });
+    await fill(user, "CMD-2026-000001", "0555123456");
+    const view = await screen.findByTestId("public-tracking");
+    expect(view).toHaveTextContent("CMD-2026-000001");
+    expect(view).toHaveTextContent("Es Senia, Oran");
+    expect(view).not.toHaveTextContent(/0555|@|rue|remarque/i);
+  });
 });
 
 describe("mode API : page de confirmation", () => {
-  it("utilise le téléphone mémorisé pour lire la commande (route publique de suivi)", async () => {
-    usePlacedOrdersStore.setState({ orders: [{ orderNumber: order.orderNumber, phone: order.customer.phone, createdAt: order.createdAt }] });
-    const { calls } = stubFetch(() => json(order));
+  it("connectée : lit la commande via GET /customers/me/orders/:numéro (jamais la route publique de suivi ni admin)", async () => {
+    const { calls } = server({
+      "GET /api/customers/me": () => json(ACCOUNT),
+      [`GET /api/customers/me/orders/${order.orderNumber}`]: () => json(customerView(order)),
+    });
     render(<OrderConfirmationView orderNumber={order.orderNumber} />, { wrapper: wrapper() });
     expect(await screen.findByTestId("order-number")).toHaveTextContent(order.orderNumber);
-    const url = new URL(calls[0]!.url, "http://x");
-    expect(url.pathname).toBe("/api/orders/track");
-    expect(url.searchParams.get("phone")).toBe(order.customer.phone);
+    expect(calls.some((c) => c.url.includes("/orders/track") || c.url.includes("/admin/"))).toBe(false);
   });
 
-  it("téléphone non mémorisé : demande le téléphone, n'appelle JAMAIS la route admin", async () => {
-    const { fn } = stubFetch(() => json(order));
+  it("non connectée : invite à se connecter ou à suivre sans compte, ne demande aucune commande", async () => {
+    const { calls } = server({ "GET /api/customers/me": () => apiError(401, "UNAUTHENTICATED", "Veuillez vous connecter.") });
     render(<OrderConfirmationView orderNumber={order.orderNumber} />, { wrapper: wrapper() });
-    expect(await screen.findByText(/retrouvez votre commande/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/téléphone utilisé/i)).toBeInTheDocument();
-    expect(fn).not.toHaveBeenCalled();
+    expect(await screen.findByText(/connectez-vous pour voir votre commande/i)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /suivre sans compte/i })).toHaveAttribute("href", "/track");
+    expect(calls.some((c) => c.url.includes("/orders"))).toBe(false);
+  });
+
+  it("commande d'une autre cliente (404) : « introuvable », sans rien révéler", async () => {
+    server({
+      "GET /api/customers/me": () => json(ACCOUNT),
+      [`GET /api/customers/me/orders/${order.orderNumber}`]: () => apiError(404, "NOT_FOUND", "Commande introuvable."),
+    });
+    render(<OrderConfirmationView orderNumber={order.orderNumber} />, { wrapper: wrapper() });
+    expect(await screen.findByText("Commande introuvable")).toBeInTheDocument();
   });
 });
 

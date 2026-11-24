@@ -1,9 +1,10 @@
 "use client";
 
 import { formatDZD, formatDate, formatDateTime, formatPhone } from "@fashion/shared";
-import { Banknote, Mail, MapPin, Phone, ShoppingBag, Users, XCircle } from "lucide-react";
+import { Banknote, KeyRound, Mail, MapPin, Phone, ShoppingBag, Users, XCircle } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { ResetPasswordDialog } from "@/components/admin/customers/reset-password-dialog";
 import { PaymentBadge } from "@/components/admin/orders/payment-badge";
 import { StatCard } from "@/components/admin/stat-card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { getErrorMessage } from "@/services";
 export function CustomerDetailView({ id }: { id: string }) {
   const { data, isLoading, isError, error, refetch } = useCustomer(id);
   const stats = useMemo(() => (data ? computeCustomerStats(data.orders) : null), [data]);
+  const [resetOpen, setResetOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -115,9 +117,14 @@ export function CustomerDetailView({ id }: { id: string }) {
                 </a>
               </Button>
             )}
+            <Button type="button" variant="outline" onClick={() => setResetOpen(true)}>
+              <KeyRound aria-hidden /> Réinitialiser le mot de passe
+            </Button>
           </div>
         </div>
       </Card>
+
+      <ResetPasswordDialog customerId={customer.id} customerName={customerName(customer)} open={resetOpen} onOpenChange={setResetOpen} />
 
       <section aria-label="Indicateurs du client" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Commandes" value={String(stats.ordersCount)} hint={`${stats.deliveredCount} livrée(s)`} icon={ShoppingBag} />

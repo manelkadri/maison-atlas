@@ -4,7 +4,7 @@ import { siteConfig } from "@/config/site";
 export default function robots(): MetadataRoute.Robots {
   const baseUrl = siteConfig.url.replace(/\/$/, "");
   return {
-    rules: [{ userAgent: "*", allow: "/", disallow: ["/admin", "/cart", "/checkout", "/account", "/order-confirmation"] }],
+    rules: [{ userAgent: "*", allow: "/", disallow: ["/admin", "/cart", "/checkout", "/account", "/order-confirmation", "/track"] }],
     sitemap: `${baseUrl}/sitemap.xml`,
   };
 }

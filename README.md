@@ -8,7 +8,7 @@ Boutique en ligne + dashboard propriétaire dans un même site, pour une boutiqu
 > - **`api`** : le site parle à un vrai serveur Express + PostgreSQL ([`apps/api`](apps/api/README.md)) : une commande passée sur un appareil
 >   apparaît dans l'administration de n'importe quel autre. Voir « Passer en mode API » plus bas.
 >
-> Reste à faire avant la mise en ligne : hébergement (base PostgreSQL gérée, serveur API, site), compte Cloudinary, vérification du client par SMS/e-mail (OTP).
+> Reste à faire avant la mise en ligne : hébergement (base PostgreSQL gérée, serveur API, site), compte Cloudinary, rotation planifiée de `JWT_SECRET` à la mise en ligne. (Les clientes se connectent par téléphone + mot de passe ; aucun SMS n'est nécessaire.)
 
 ## Démarrage rapide
 
@@ -100,7 +100,7 @@ sont réutilisables telles quelles côté serveur.
 5. Les prix et coûts sont **figés** dans les lignes de commande à l'achat.
 6. Paiement **COD uniquement** : `paymentStatus = pending` tant que la commande n'est pas livrée (« à encaisser »).
 7. Frais de livraison séparés du sous-total ; tarifs par zone de wilaya et par mode (domicile / bureau), réglables dans l'admin.
-8. Commande **sans compte** autorisée (client invité).
+8. **Compte client obligatoire pour commander** (téléphone + mot de passe, sans SMS) ; le suivi par numéro + téléphone reste possible sans compte, avec une vue minimale.
 9. Machine à états des commandes (9 statuts) ; annulation, refus et retour restituent le stock et écrivent un mouvement.
 10. Chaque variation de stock produit une ligne d'historique (type, quantité avant/après, motif, référence).
 11. Statistiques : chiffre d'affaires (livré, hors livraison) ≠ bénéfice brut (CA − coût d'achat). Le **bénéfice net n'est pas calculé**.

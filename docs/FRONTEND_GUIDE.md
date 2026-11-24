@@ -91,7 +91,16 @@ Pour savoir quelle source est active dans l'interface (textes, bandeaux, section
 - Panier : une ligne = une variante (`variantId`). `addItem` plafonne à `maxStock`. Les prix du panier sont un instantané ; `createOrder` revalide stock et prix.
 - Paiement : uniquement `cash_on_delivery`. COD ≠ encaissé : `paymentStatus` reste `pending` jusqu'à la livraison.
 - Auth simulée (mock : admin et client) : afficher clairement « mode démo — non sécurisé ». Ne jamais prétendre à une vraie sécurité.
-  En mode API, la session admin est réelle (cookie httpOnly) ; l'« espace client » reste une simple mémoire locale de l'appareil (pas de compte).
+  En mode API, les sessions admin et cliente sont réelles (cookies httpOnly `admin_session` et `customer_session`, vérifiés en base par le serveur).
+- **Comptes clientes (mode API)** : `customerAccountService` (`register`, `login`, `logout`, `me`, `updateProfile`, `changePassword`, `getMyOrders`, `getMyOrder`) →
+  `/api/customers/*`. Le site ne lit JAMAIS le cookie (httpOnly) : il demande « qui suis-je ? » à `GET /customers/me` (`useAccount`). L'identité vient toujours de la session
+  côté serveur, jamais d'un paramètre. **Commander exige d'être connectée** (le serveur répond `401`, rien n'est créé) : la page de paiement propose la connexion /
+  l'inscription sur place (le panier, mémorisé dans le navigateur, est conservé). Mot de passe provisoire (réinitialisation admin) : `403 PASSWORD_CHANGE_REQUIRED` → seul le
+  formulaire de changement est proposé. Mock : compte simulé dans le navigateur (aucune sécurité, bandeau « démonstration »).
+- **Suivi sans compte** : page `/track` (`orderService.trackOrder(numéro, téléphone)` → `PublicTrackedOrder`, vue minimale : prénom, commune/wilaya, articles, totaux, étapes ;
+  jamais téléphone, adresse, note ni identifiant interne). Rien n'est mémorisé sur l'appareil (le store des « commandes mémorisées » n'existe plus).
+- **Types de commande** : `Order` (admin, avec prix de revient et notes internes) ≠ `CustomerOrder` (sa propriétaire) ≠ `PublicTrackedOrder` (suivi public). Ne jamais passer un `Order` à un composant de la boutique.
+- **Admin** : fiche cliente → « Réinitialiser le mot de passe » (l'administrateur ressaisit son mot de passe ; le mot de passe provisoire n'est affiché qu'une fois).
 
 ## 4. Images
 

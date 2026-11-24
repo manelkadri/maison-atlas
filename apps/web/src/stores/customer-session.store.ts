@@ -6,6 +6,9 @@ export type CustomerProfile = {
   lastName: string;
   phone: string;
   email: string;
+  wilayaCode?: string;
+  commune?: string;
+  address?: string;
 };
 
 /**

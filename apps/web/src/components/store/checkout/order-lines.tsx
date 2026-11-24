@@ -32,7 +32,7 @@ export const cartItemToLine = (item: CartItem): SummaryLine => ({
   lineTotal: item.unitPrice * item.quantity,
 });
 
-export const orderItemToLine = (item: OrderItem): SummaryLine => ({
+export const orderItemToLine = (item: Omit<OrderItem, "unitCost">): SummaryLine => ({
   key: item.id,
   name: item.productName,
   href: `/product/${item.productSlug}`,

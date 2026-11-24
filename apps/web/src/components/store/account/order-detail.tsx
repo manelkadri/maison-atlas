@@ -7,13 +7,10 @@ import Link from "next/link";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OrderStatusBadge } from "@/components/ui/status-badge";
-import { useTrackedOrder } from "@/features/orders/hooks";
-import { isApiMode } from "@/lib/api-config";
+import { useAccount, useMyOrder } from "@/features/account/hooks";
 import { cn } from "@/lib/utils";
-import { useCustomerSessionStore } from "@/stores/customer-session.store";
-import type { Order } from "@/types/order.types";
-import { TrackOrderForm } from "./track-order-form";
-import { buildTimeline, countPieces, describePayment, isOwnOrder, type TimelineStep } from "./order-utils";
+import type { CustomerOrder } from "@/types/order.types";
+import { buildTimeline, countPieces, describePayment, type TimelineStep } from "./order-utils";
 
 function BackLink() {
   return (
@@ -93,7 +90,7 @@ function SummaryRow({ label, value, strong, tone }: { label: string; value: stri
   );
 }
 
-function Delivery({ order }: { order: Order }) {
+function Delivery({ order }: { order: CustomerOrder }) {
   const a = order.shippingAddress;
   return (
     <address className="text-sm leading-relaxed not-italic">
@@ -121,20 +118,6 @@ function Delivery({ order }: { order: Order }) {
   );
 }
 
-/** Mode API : le téléphone de cette commande n'est pas mémorisé sur l'appareil → saisie du couple numéro + téléphone. */
-function NeedsPhone({ orderNumber }: { orderNumber: string }) {
-  return (
-    <div className="max-w-xl">
-      <BackLink />
-      <h1 className="font-display text-2xl">Retrouvez votre commande</h1>
-      <p className="text-muted-foreground mt-2 mb-6 text-sm leading-relaxed">
-        Pour protéger vos données, saisissez le numéro de téléphone utilisé lors de la commande {orderNumber}.
-      </p>
-      <TrackOrderForm initialOrderNumber={orderNumber} />
-    </div>
-  );
-}
-
 function NotFound() {
   return (
     <div>
@@ -142,7 +125,7 @@ function NotFound() {
       <EmptyState
         icon={PackageSearch}
         title="Commande introuvable"
-        description="Cette commande n'existe pas ou n'est pas associée à votre numéro de téléphone."
+        description="Cette commande n'existe pas ou n'appartient pas à votre compte."
         action={
           <Link href="/account/orders" className="text-sm font-medium underline underline-offset-4">
             Retour à mes commandes
@@ -154,17 +137,14 @@ function NotFound() {
 }
 
 /**
- * Détail d'une commande.
- * Mode mock : visible uniquement si son téléphone correspond à la session simulée.
- * Mode API : lu avec le couple (numéro, téléphone) mémorisé sur l'appareil — le serveur ne répond que si les deux correspondent.
+ * Détail d'une commande de la cliente connectée. Le serveur répond 404 pour une commande qui n'est pas la sienne
+ * (indiscernable d'une commande inexistante).
  */
 export function OrderDetail({ orderNumber }: { orderNumber: string }) {
-  const apiMode = isApiMode();
-  const profile = useCustomerSessionStore((s) => s.profile);
-  const { data: order, isLoading, isError, needsPhone } = useTrackedOrder(orderNumber);
+  const { data: profile } = useAccount();
+  const { data: order, isLoading, isError } = useMyOrder(orderNumber, !!profile);
 
-  if (!apiMode && !profile) return null;
-  if (needsPhone) return <NeedsPhone orderNumber={orderNumber} />;
+  if (!profile) return null;
 
   if (isLoading) {
     return (
@@ -187,7 +167,7 @@ export function OrderDetail({ orderNumber }: { orderNumber: string }) {
     );
   }
 
-  if (!order || (!apiMode && !isOwnOrder(order, profile?.phone))) return <NotFound />;
+  if (!order) return <NotFound />;
 
   const timeline = buildTimeline(order);
   const payment = describePayment(order);

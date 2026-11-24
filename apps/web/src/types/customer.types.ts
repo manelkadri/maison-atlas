@@ -1,2 +1,2 @@
-﻿export type { Customer, CustomerSummary } from "@fashion/types";
+﻿export type { Customer, CustomerSummary, CustomerAccount } from "@fashion/types";
 

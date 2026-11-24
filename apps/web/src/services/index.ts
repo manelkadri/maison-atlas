@@ -10,6 +10,7 @@
 import { apiAnalyticsService } from "./api/analytics.api";
 import { apiAuthService } from "./api/auth.api";
 import { apiCategoryService } from "./api/categories.api";
+import { apiCustomerAccountService } from "./api/customer-account.api";
 import { apiCustomerService } from "./api/customers.api";
 import { apiInventoryService } from "./api/inventory.api";
 import { apiNewsletterService } from "./api/newsletter.api";
@@ -25,6 +26,7 @@ import type {
   AnalyticsService,
   AuthService,
   CategoryService,
+  CustomerAccountService,
   CustomerService,
   InventoryService,
   NewsletterService,
@@ -34,6 +36,7 @@ import type {
   SettingsService,
   UploadService,
 } from "./contracts";
+import { customerAccountService as mockCustomerAccountService } from "./customer-account.service";
 import { customerService as mockCustomerService } from "./customers.service";
 import { inventoryService as mockInventoryService } from "./inventory.service";
 import { newsletterService as mockNewsletterService } from "./newsletter.service";
@@ -50,6 +53,7 @@ export const categoryService: CategoryService = useApi ? apiCategoryService : mo
 export const orderService: OrderService = useApi ? apiOrderService : mockOrderService;
 export const inventoryService: InventoryService = useApi ? apiInventoryService : mockInventoryService;
 export const customerService: CustomerService = useApi ? apiCustomerService : mockCustomerService;
+export const customerAccountService: CustomerAccountService = useApi ? apiCustomerAccountService : mockCustomerAccountService;
 export const promotionService: PromotionService = useApi ? apiPromotionService : mockPromotionService;
 export const settingsService: SettingsService = useApi ? apiSettingsService : mockSettingsService;
 export const analyticsService: AnalyticsService = useApi ? apiAnalyticsService : mockAnalyticsService;

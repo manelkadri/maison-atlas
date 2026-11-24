@@ -7,14 +7,15 @@ import type {
   TimeSeriesPoint,
   TopProduct,
 } from "@/types/analytics.types";
-import type { Customer, CustomerSummary } from "@/types/customer.types";
+import type { CustomerAccountLoginValues, CustomerChangePasswordValues, CustomerProfileUpdateValues, CustomerRegisterValues } from "@fashion/validators";
+import type { CustomerAccount, CustomerSummary } from "@/types/customer.types";
 import type {
   CreateStockMovementInput,
   InventoryFilters,
   InventoryItem,
   StockMovement,
 } from "@/types/inventory.types";
-import type { CreateOrderInput, Order, OrderFilters, OrderStatus } from "@/types/order.types";
+import type { CreateOrderInput, CustomerOrder, Order, OrderFilters, OrderStatus, PublicTrackedOrder } from "@/types/order.types";
 import type {
   Category,
   CreateCategoryInput,
@@ -82,14 +83,18 @@ export interface CategoryService {
 export interface OrderService {
   getOrders(filters?: OrderFilters): Promise<Order[]>;
   getOrderById(id: string): Promise<Order | null>;
+  /** Recherche ADMINISTRATEUR par numéro (session administrateur requise en mode API). */
+  getOrderByNumber(orderNumber: string): Promise<Order | null>;
   /**
-   * Sans `phone` : recherche administrateur par numéro (session requise en mode API).
-   * Avec `phone` : suivi public — le numéro ET le téléphone doivent correspondre, sinon `null`
-   * (même réponse dans les deux cas : rien n'est révélé).
+   * Suivi PUBLIC : le numéro ET le téléphone doivent correspondre, sinon `null` (même réponse dans les deux cas : rien n'est
+   * révélé). Ne renvoie que le strict nécessaire (`PublicTrackedOrder`) : ni nom de famille, ni téléphone, ni adresse, ni note.
    */
-  getOrderByNumber(orderNumber: string, phone?: string): Promise<Order | null>;
-  /** Crée la commande, réserve le stock par variante et fige les prix. */
-  createOrder(input: CreateOrderInput): Promise<Order>;
+  trackOrder(orderNumber: string, phone: string): Promise<PublicTrackedOrder | null>;
+  /**
+   * Crée la commande de la cliente CONNECTÉE (sinon `UNAUTHENTICATED`, rien n'est créé ; `PASSWORD_CHANGE_REQUIRED` si son mot
+   * de passe provisoire n'a pas été changé). Réserve le stock par variante et fige les prix.
+   */
+  createOrder(input: CreateOrderInput): Promise<CustomerOrder>;
   updateOrderStatus(id: string, status: OrderStatus, note?: string): Promise<Order>;
 }
 
@@ -102,8 +107,29 @@ export interface InventoryService {
 export interface CustomerService {
   getCustomers(): Promise<CustomerSummary[]>;
   getCustomerById(id: string): Promise<{ customer: CustomerSummary; orders: Order[] } | null>;
-  /** Mock uniquement. En mode API : renvoie toujours `null` (aucune recherche de client par téléphone en public). */
-  findByPhone(phone: string): Promise<Customer | null>;
+  /**
+   * Réinitialisation par l'administrateur (il ressaisit SON mot de passe). Le mot de passe provisoire n'est renvoyé qu'ici, une
+   * seule fois : à communiquer à la cliente, qui devra le changer à sa première connexion.
+   */
+  resetPassword(customerId: string, adminPassword: string): Promise<{ temporaryPassword: string }>;
+}
+
+/** Espace de la cliente (téléphone + mot de passe). L'identité vient toujours de la session côté serveur. */
+export interface CustomerAccountService {
+  /** Crée le compte ET ouvre la session. */
+  register(values: CustomerRegisterValues): Promise<CustomerAccount>;
+  /** Ouvre la session. Échec : `ServiceError` à message unique ; trop d'essais : `RATE_LIMITED`. */
+  login(values: CustomerAccountLoginValues): Promise<CustomerAccount>;
+  logout(): Promise<void>;
+  /** Compte de la session courante, ou `null` s'il n'y en a pas. */
+  me(): Promise<CustomerAccount | null>;
+  updateProfile(values: CustomerProfileUpdateValues): Promise<CustomerAccount>;
+  /** Révoque toutes les sessions puis en ouvre une neuve. */
+  changePassword(values: CustomerChangePasswordValues): Promise<CustomerAccount>;
+  /** Commandes de la cliente connectée, les plus récentes d'abord. */
+  getMyOrders(): Promise<CustomerOrder[]>;
+  /** Une commande de la cliente connectée ; `null` si elle n'existe pas OU n'est pas la sienne. */
+  getMyOrder(orderNumber: string): Promise<CustomerOrder | null>;
 }
 
 export interface PromotionService {
