@@ -28,6 +28,40 @@ const TEMPLATE_NOTICE: InfoBlock = {
 
 export const INFO_PAGES: InfoPage[] = [
   {
+    slug: "a-propos",
+    title: "À propos de nous",
+    description: "Maison Atlas, boutique de prêt-à-porter féminin et d'accessoires à Aïn Témouchent. Paiement à la livraison partout en Algérie.",
+    intro: "Maison Atlas est une boutique de prêt-à-porter féminin et d'accessoires, installée à Aïn Témouchent et ouverte à toute l'Algérie.",
+    sections: [
+      {
+        heading: "Notre boutique",
+        blocks: [
+          { type: "p", text: "Nous proposons des vêtements et des accessoires pour femme, choisis pour leur coupe, leur matière et leur facilité à se porter au quotidien." },
+          { type: "p", text: "Vous pouvez venir essayer nos pièces en magasin, ou commander en ligne depuis chez vous." },
+        ],
+      },
+      {
+        heading: "Commander simplement",
+        blocks: [
+          {
+            type: "list",
+            items: [
+              "Paiement à la livraison : vous ne payez qu'à la réception de votre commande, en espèces.",
+              "Livraison dans les 69 wilayas, à domicile ou en bureau de livraison.",
+              "Un échange est possible selon les conditions décrites dans la page « Retours & échanges ».",
+            ],
+          },
+        ],
+      },
+      {
+        heading: "Nous contacter",
+        blocks: [
+          { type: "p", text: "Une question sur une taille, une couleur ou une commande ? Retrouvez l'adresse, les horaires et le numéro de la boutique sur la page Contact : nous vous répondons avec plaisir." },
+        ],
+      },
+    ],
+  },
+  {
     slug: "livraison",
     title: "Livraison",
     description: "Délais, tarifs et modes de livraison partout en Algérie. Paiement à la livraison.",

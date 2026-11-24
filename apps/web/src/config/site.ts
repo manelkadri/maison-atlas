@@ -15,10 +15,9 @@ export type NavItem = { label: string; href: string };
 /** Navigation principale de la boutique (aucun lien "#"). */
 export const storeNav: NavItem[] = [
   { label: "Accueil", href: "/" },
-  { label: "Boutique", href: "/shop" },
-  { label: "Femme", href: "/shop?category=femme" },
   { label: "Nouveautés", href: "/shop?collection=new" },
-  { label: "Promotions", href: "/shop?collection=sale" },
+  { label: "À propos de nous", href: "/info/a-propos" },
+  { label: "Contact", href: "/contact" },
 ];
 
 export const footerLinks = {

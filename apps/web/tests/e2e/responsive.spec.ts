@@ -58,8 +58,9 @@ test.describe("14. responsive — boutique", () => {
     await page.getByRole("button", { name: /menu/i }).first().click();
     const nav = page.getByRole("dialog");
     await expect(nav).toBeVisible();
-    await nav.getByRole("link", { name: "Femme" }).first().click();
-    await expect(page).toHaveURL(/category=femme/);
+    await expect(nav.getByRole("navigation", { name: "Menu principal" }).getByRole("link")).toHaveText(["Accueil", "Nouveautés", "À propos de nous", "Contact"]);
+    await nav.getByRole("link", { name: "Contact" }).first().click();
+    await expect(page).toHaveURL(/\/contact/);
   });
 
   test("mobile : les filtres s'ouvrent dans un tiroir", async ({ page }) => {

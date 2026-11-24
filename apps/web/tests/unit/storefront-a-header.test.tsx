@@ -57,17 +57,41 @@ describe("compteurs", () => {
 });
 
 describe("MainNav", () => {
+  const links = () => screen.getAllByRole("link").map((l) => ({ name: l.textContent, href: l.getAttribute("href") }));
+
   beforeEach(() => {
     nav.pathname = "/shop";
-    nav.search = "category=femme";
+    nav.search = "collection=new";
+  });
+
+  it("ne contient que Accueil, Nouveautés, À propos de nous et Contact, dans cet ordre", () => {
+    render(<MainNav className="flex" />);
+    expect(links()).toEqual([
+      { name: "Accueil", href: "/" },
+      { name: "Nouveautés", href: "/shop?collection=new" },
+      { name: "À propos de nous", href: "/info/a-propos" },
+      { name: "Contact", href: "/contact" },
+    ]);
   });
 
   it("marque uniquement le lien courant avec aria-current", () => {
     render(<MainNav className="flex" />);
     const current = screen.getAllByRole("link").filter((l) => l.getAttribute("aria-current") === "page");
     expect(current).toHaveLength(1);
-    expect(current[0]).toHaveTextContent("Femme");
-    expect(screen.getByRole("link", { name: "Boutique" })).not.toHaveAttribute("aria-current");
+    expect(current[0]).toHaveTextContent("Nouveautés");
+  });
+
+  it.each([
+    ["/", "", "Accueil"],
+    ["/info/a-propos", "", "À propos de nous"],
+    ["/contact", "", "Contact"],
+  ])("%s : seul « %s » est actif", (pathname, search, label) => {
+    nav.pathname = pathname;
+    nav.search = search;
+    render(<MainNav className="flex" />);
+    const current = screen.getAllByRole("link").filter((l) => l.getAttribute("aria-current") === "page");
+    expect(current).toHaveLength(1);
+    expect(current[0]).toHaveTextContent(label);
   });
 });
 

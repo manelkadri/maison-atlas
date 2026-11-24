@@ -18,11 +18,13 @@ test.describe("boutique — parcours client", () => {
     if (test.info().project.name === "mobile") {
       // Sur mobile la navigation est dans le menu hamburger.
       await page.getByRole("button", { name: /menu/i }).first().click();
-      await page.getByRole("dialog").getByRole("link", { name: "Boutique" }).click();
+      await page.getByRole("dialog").getByRole("link", { name: "Nouveautés" }).click();
     } else {
-      await page.getByRole("banner").getByRole("link", { name: "Boutique" }).click();
+      await page.getByRole("banner").getByRole("link", { name: "Nouveautés" }).click();
     }
-    await expect(page).toHaveURL(/\/shop/);
+    await expect(page).toHaveURL(/collection=new/);
+    // Le menu ne contient plus « Boutique » : le catalogue complet s'ouvre directement.
+    await page.goto("/shop");
     await expect(page.getByText(/19 produits/)).toBeVisible();
 
     // Catégorie : les robes
