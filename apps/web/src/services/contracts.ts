@@ -58,6 +58,14 @@ export interface ProductService {
   deleteProduct(id: string): Promise<void>;
 }
 
+/** Ce que supprimerait la suppression définitive d'une catégorie (arbre complet, produits archivés compris). */
+export interface CategoryDeletionImpact {
+  subcategories: number;
+  products: number;
+  /** Produits présents dans des commandes : s'il y en a, la suppression est refusée (il faut archiver). */
+  orderedProducts: number;
+}
+
 export interface CategoryService {
   getCategories(options?: { includeArchived?: boolean }): Promise<Category[]>;
   getCategoryBySlug(slug: string): Promise<Category | null>;
@@ -65,6 +73,10 @@ export interface CategoryService {
   updateCategory(id: string, data: UpdateCategoryInput): Promise<Category>;
   archiveCategory(id: string): Promise<void>;
   restoreCategory(id: string): Promise<void>;
+  /** Aperçu de la suppression définitive (sous-catégories et produits qui partiraient avec la catégorie). */
+  getCategoryDeletionImpact(id: string): Promise<CategoryDeletionImpact>;
+  /** Supprime DÉFINITIVEMENT la catégorie, ses sous-catégories et leurs produits. Refusé (CONFLICT) si un produit a été commandé. */
+  deleteCategory(id: string): Promise<void>;
 }
 
 export interface OrderService {

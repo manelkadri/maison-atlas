@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Archive, ArchiveRestore, CornerDownRight, FolderPlus, FolderTree, Lock, Pencil, Plus, RefreshCw, Search, TriangleAlert } from "lucide-react";
+import { Archive, ArchiveRestore, CornerDownRight, FolderPlus, FolderTree, Loader2, Lock, Pencil, Plus, RefreshCw, Search, Trash2, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/admin/page-header";
 import { ProductThumb } from "@/components/admin/products/product-thumb";
@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ToneBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useArchiveCategory, useCategories, useRestoreCategory } from "@/features/categories/hooks";
+import { useArchiveCategory, useCategories, useCategoryDeletionImpact, useDeleteCategory, useRestoreCategory } from "@/features/categories/hooks";
 import { buildCategoryRows, type CategoryRow } from "@/features/categories/tree";
 import { useProducts } from "@/features/products/hooks";
 import { useDebouncedValue } from "@/features/products/use-debounced-value";
@@ -24,7 +24,7 @@ import { getErrorMessage } from "@/services";
 import type { Category } from "@/types/product.types";
 import { CategoryFormDialog, type CategoryDialogState } from "./category-form-dialog";
 
-type PendingConfirm = { kind: "archive" | "restore"; row: CategoryRow } | null;
+type PendingConfirm = { kind: "archive" | "restore" | "delete"; row: CategoryRow } | null;
 
 const LOCKED_MESSAGE = "Collection système : elle ne peut être ni archivée ni supprimée.";
 
@@ -36,6 +36,7 @@ function RowActions({
   onAddChild,
   onArchive,
   onRestore,
+  onDelete,
 }: {
   row: CategoryRow;
   parentArchived: boolean;
@@ -44,6 +45,7 @@ function RowActions({
   onAddChild: () => void;
   onArchive: () => void;
   onRestore: () => void;
+  onDelete: () => void;
 }) {
   const c = row.category;
   const locked = c.kind === "collection";
@@ -97,6 +99,17 @@ function RowActions({
           <TooltipContent>Archiver</TooltipContent>
         </Tooltip>
       )}
+
+      {!locked && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-sm" onClick={onDelete} disabled={busy} aria-label={`Supprimer définitivement ${c.name}`} className="text-destructive hover:text-destructive">
+              <Trash2 aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Supprimer définitivement</TooltipContent>
+        </Tooltip>
+      )}
     </div>
   );
 }
@@ -145,6 +158,7 @@ export function CategoryList() {
   const products = useProducts();
   const archive = useArchiveCategory();
   const restore = useRestoreCategory();
+  const del = useDeleteCategory();
 
   const [searchInput, setSearchInput] = useState("");
   const [showArchived, setShowArchived] = useState(true);
@@ -158,6 +172,8 @@ export function CategoryList() {
   const rows = useMemo(() => buildCategoryRows(all, productList, { search, includeArchived: showArchived }), [all, productList, search, showArchived]);
   const byId = useMemo(() => new Map(all.map((c) => [c.id, c])), [all]);
 
+  const deletionImpact = useCategoryDeletionImpact(confirm?.kind === "delete" ? confirm.row.category.id : null);
+
   const parentArchived = (c: Category) => !!c.parentId && !!byId.get(c.parentId)?.isArchived;
 
   const onConfirm = async (): Promise<void> => {
@@ -166,7 +182,10 @@ export function CategoryList() {
     const c = row.category;
     setBusyId(c.id);
     try {
-      if (kind === "archive") {
+      if (kind === "delete") {
+        await del.mutateAsync(c.id);
+        toast.success(`« ${c.name} » a été supprimée définitivement.`);
+      } else if (kind === "archive") {
         await archive.mutateAsync(c.id);
         toast.success(row.childCount > 0 ? `« ${c.name} » et ses sous-catégories ont été archivées.` : `« ${c.name} » a été archivée.`);
       } else {
@@ -193,6 +212,7 @@ export function CategoryList() {
       onAddChild={() => setDialog({ mode: "create", parentId: row.category.id })}
       onArchive={() => setConfirm({ kind: "archive", row })}
       onRestore={() => setConfirm({ kind: "restore", row })}
+      onDelete={() => setConfirm({ kind: "delete", row })}
     />
   );
 
@@ -353,6 +373,54 @@ export function CategoryList() {
               </p>
             )}
             <p className="text-muted-foreground text-xs">Vous pourrez la restaurer à tout moment (les sous-catégories se restaurent une à une).</p>
+          </div>
+        }
+        onConfirm={onConfirm}
+      />
+      <ConfirmDialog
+        open={confirm?.kind === "delete"}
+        onOpenChange={(o) => !o && !confirmBusy && setConfirm(null)}
+        title="Supprimer définitivement cette catégorie ?"
+        variant="destructive"
+        confirmLabel="Oui, supprimer définitivement"
+        isPending={confirmBusy}
+        confirmDisabled={!deletionImpact.data || deletionImpact.data.orderedProducts > 0}
+        description={
+          <div className="space-y-3">
+            <p>
+              « <strong>{confirm?.row.category.name}</strong> »
+            </p>
+            {deletionImpact.isPending && (
+              <p className="text-muted-foreground flex items-center gap-2" role="status">
+                <Loader2 className="size-4 animate-spin" aria-hidden /> Calcul de ce qui sera supprimé…
+              </p>
+            )}
+            {deletionImpact.isError && <p role="alert" className="text-destructive">{getErrorMessage(deletionImpact.error)}</p>}
+            {deletionImpact.data && deletionImpact.data.orderedProducts > 0 && (
+              <p role="alert" className="bg-warning-soft text-foreground/90 rounded-md p-3">
+                <strong>Suppression impossible :</strong> {deletionImpact.data.orderedProducts} produit{deletionImpact.data.orderedProducts > 1 ? "s" : ""} de cette catégorie
+                figure{deletionImpact.data.orderedProducts > 1 ? "nt" : ""} dans des commandes. Elles doivent garder leur historique : <strong>archivez</strong> la catégorie à la place.
+              </p>
+            )}
+            {deletionImpact.data && deletionImpact.data.orderedProducts === 0 && (
+              <>
+                <p>Seront supprimés définitivement :</p>
+                <ul className="list-disc space-y-0.5 pl-5">
+                  <li>cette catégorie</li>
+                  {deletionImpact.data.subcategories > 0 && (
+                    <li>
+                      <strong>{deletionImpact.data.subcategories}</strong> sous-catégorie{deletionImpact.data.subcategories > 1 ? "s" : ""}
+                    </li>
+                  )}
+                  {deletionImpact.data.products > 0 && (
+                    <li>
+                      <strong>{deletionImpact.data.products}</strong> produit{deletionImpact.data.products > 1 ? "s" : ""}, avec leurs variantes, images et historique de stock
+                    </li>
+                  )}
+                </ul>
+                <p className="text-destructive font-medium">Cette action est irréversible. Pour seulement la retirer de la boutique, utilisez plutôt « Archiver ».</p>
+              </>
+            )}
           </div>
         }
         onConfirm={onConfirm}

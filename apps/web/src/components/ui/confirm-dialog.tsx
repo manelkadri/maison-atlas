@@ -23,6 +23,8 @@ type ConfirmDialogProps = {
   /** "destructive" pour supprimer/archiver, "default" pour un changement sensible. */
   variant?: "default" | "destructive";
   isPending?: boolean;
+  /** Désactive le bouton de confirmation (ex. action impossible, ou aperçu pas encore chargé). */
+  confirmDisabled?: boolean;
   onConfirm: () => void | Promise<void>;
 };
 
@@ -39,6 +41,7 @@ export function ConfirmDialog({
   cancelLabel = "Annuler",
   variant = "default",
   isPending = false,
+  confirmDisabled = false,
   onConfirm,
 }: ConfirmDialogProps) {
   return (
@@ -52,7 +55,7 @@ export function ConfirmDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>{cancelLabel}</AlertDialogCancel>
-          <Button variant={variant === "destructive" ? "destructive" : "default"} disabled={isPending} onClick={() => void onConfirm()}>
+          <Button variant={variant === "destructive" ? "destructive" : "default"} disabled={isPending || confirmDisabled} onClick={() => void onConfirm()}>
             {isPending && <Loader2 className="animate-spin" aria-hidden />}
             {confirmLabel}
           </Button>

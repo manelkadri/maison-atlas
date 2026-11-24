@@ -16,6 +16,7 @@ export const queryKeys = {
   categories: {
     all: ["categories"] as const,
     list: (includeArchived = false) => ["categories", "list", includeArchived] as const,
+    deletionImpact: (id: string) => ["categories", "deletion-impact", id] as const,
   },
   orders: {
     all: ["orders"] as const,

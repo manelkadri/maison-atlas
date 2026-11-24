@@ -1,6 +1,6 @@
 import { apiFetch, apiFetchOrNull } from "@/lib/api-client";
 import type { Category } from "@/types/product.types";
-import type { CategoryService } from "../contracts";
+import type { CategoryDeletionImpact, CategoryService } from "../contracts";
 
 const seg = encodeURIComponent;
 
@@ -22,5 +22,11 @@ export const apiCategoryService: CategoryService = {
 
   async restoreCategory(id) {
     await apiFetch<void>(`/admin/categories/${seg(id)}/restore`, { method: "POST" });
+  },
+
+  getCategoryDeletionImpact: (id) => apiFetch<CategoryDeletionImpact>(`/admin/categories/${seg(id)}/deletion-impact`),
+
+  async deleteCategory(id) {
+    await apiFetch<void>(`/admin/categories/${seg(id)}`, { method: "DELETE" });
   },
 };

@@ -1,4 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { makeProduct, orderBody } from "./api2-factories";
 import { adminAgent, http, prisma, resetDatabase } from "./helpers";
 
 type Agent = Awaited<ReturnType<typeof adminAgent>>;
@@ -10,6 +11,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+  await prisma.order.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
 });
@@ -178,6 +180,91 @@ describe("archivage", () => {
   it("archive / restore d'une catégorie inconnue ⇒ 404", async () => {
     expect((await admin.post("/api/admin/categories/nope/archive")).status).toBe(404);
     expect((await admin.post("/api/admin/categories/nope/restore")).status).toBe(404);
+  });
+});
+
+describe("suppression définitive", () => {
+  const exists = async (id: string) => (await prisma.category.count({ where: { id } })) === 1;
+
+  it("supprime une catégorie vide : 204, elle disparaît de la base et de la boutique", async () => {
+    const cat = await create({ slug: "a-supprimer" });
+    await admin.delete(`/api/admin/categories/${cat.id}`).expect(204);
+    expect(await exists(cat.id)).toBe(false);
+    const publicList = await http().get("/api/categories");
+    expect(publicList.body.map((c: { id: string }) => c.id)).not.toContain(cat.id);
+  });
+
+  it("annonce l'impact (sous-catégories, produits archivés compris) puis supprime tout en cascade", async () => {
+    const parent = await create({ slug: "femme", name: "Femme" });
+    const child = await create({ slug: "robe", name: "Robe", parentId: parent.id });
+    const product = await makeProduct({ categoryId: child.id, variants: [{ stock: 4 }, { stock: 2 }] });
+    await makeProduct({ categoryId: child.id, isArchived: true });
+    await prisma.stockMovement.create({
+      data: { variantId: product.variants[0]!.id, type: "adjustment", quantityDelta: 4, quantityBefore: 0, quantityAfter: 4, reason: "test" },
+    });
+
+    const impact = await admin.get(`/api/admin/categories/${parent.id}/deletion-impact`);
+    expect(impact.status).toBe(200);
+    expect(impact.body).toEqual({ subcategories: 1, products: 2, orderedProducts: 0 });
+
+    await admin.delete(`/api/admin/categories/${parent.id}`).expect(204);
+    expect(await prisma.category.count()).toBe(0);
+    expect(await prisma.product.count()).toBe(0);
+    expect(await prisma.productVariant.count()).toBe(0);
+    expect(await prisma.productImage.count()).toBe(0);
+    expect(await prisma.stockMovement.count()).toBe(0);
+  });
+
+  it("supprimer une sous-catégorie laisse le parent et ses autres produits intacts", async () => {
+    const parent = await create({ slug: "femme", name: "Femme" });
+    const child = await create({ slug: "robe", name: "Robe", parentId: parent.id });
+    const keep = await makeProduct({ categoryId: parent.id });
+    await makeProduct({ categoryId: child.id });
+
+    await admin.delete(`/api/admin/categories/${child.id}`).expect(204);
+    expect(await exists(parent.id)).toBe(true);
+    expect(await exists(child.id)).toBe(false);
+    expect(await prisma.product.findMany({ select: { id: true } })).toEqual([{ id: keep.id }]);
+  });
+
+  it("refuse tout (409) si un produit a déjà été commandé : rien n'est supprimé, il faut archiver", async () => {
+    const parent = await create({ slug: "femme", name: "Femme" });
+    const child = await create({ slug: "robe", name: "Robe", parentId: parent.id });
+    const ordered = await makeProduct({ categoryId: child.id, variants: [{ stock: 5 }] });
+    await makeProduct({ categoryId: child.id });
+    await http().post("/api/orders").send(orderBody([{ variantId: ordered.variants[0]!.id, quantity: 1 }])).expect(201);
+
+    const impact = await admin.get(`/api/admin/categories/${parent.id}/deletion-impact`);
+    expect(impact.body).toEqual({ subcategories: 1, products: 2, orderedProducts: 1 });
+
+    const res = await admin.delete(`/api/admin/categories/${parent.id}`);
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe("CONFLICT");
+    expect(res.body.error.message).toMatch(/commandes existantes.*archivez/);
+    expect(await prisma.category.count()).toBe(2);
+    expect(await prisma.product.count()).toBe(2);
+    expect(await prisma.order.count()).toBe(1);
+  });
+
+  it("les collections système ne se suppriment pas (409), ni ne s'évaluent", async () => {
+    const collection = await create({ slug: "new", name: "Nouveautés", kind: "collection" });
+    expect((await admin.delete(`/api/admin/categories/${collection.id}`)).status).toBe(409);
+    expect((await admin.get(`/api/admin/categories/${collection.id}/deletion-impact`)).status).toBe(409);
+    expect(await exists(collection.id)).toBe(true);
+  });
+
+  it("catégorie inconnue ⇒ 404", async () => {
+    expect((await admin.delete("/api/admin/categories/nope")).status).toBe(404);
+    expect((await admin.get("/api/admin/categories/nope/deletion-impact")).status).toBe(404);
+  });
+
+  it("exige une session (401) et refuse une autre origine (403)", async () => {
+    const cat = await create({ slug: "protegee" });
+    expect((await http().delete(`/api/admin/categories/${cat.id}`)).status).toBe(401);
+    expect((await http().get(`/api/admin/categories/${cat.id}/deletion-impact`)).status).toBe(401);
+    const cross = await admin.delete(`/api/admin/categories/${cat.id}`).set("Origin", "https://site-malveillant.example");
+    expect(cross.status).toBe(403);
+    expect(await exists(cat.id)).toBe(true);
   });
 });
 

@@ -29,3 +29,17 @@ export function useArchiveCategory() {
 export function useRestoreCategory() {
   return useMutation({ mutationFn: (id: string) => categoryService.restoreCategory(id) });
 }
+
+/** Aperçu de la suppression définitive (chargé seulement quand `id` est renseigné, c.-à-d. fenêtre de confirmation ouverte). */
+export function useCategoryDeletionImpact(id: string | null) {
+  return useQuery({
+    queryKey: queryKeys.categories.deletionImpact(id ?? ""),
+    queryFn: () => categoryService.getCategoryDeletionImpact(id!),
+    enabled: id !== null,
+    gcTime: 0,
+  });
+}
+
+export function useDeleteCategory() {
+  return useMutation({ mutationFn: (id: string) => categoryService.deleteCategory(id) });
+}
