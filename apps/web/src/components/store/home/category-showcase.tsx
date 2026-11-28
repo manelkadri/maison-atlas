@@ -9,7 +9,7 @@ import { SectionHeading } from "./section-heading";
 export function CategoryShowcase({ categories }: { categories: Category[] }) {
   const roots = getRootCategories(categories);
   return (
-    <section aria-labelledby="home-categories" className="container-store py-16 sm:py-24">
+    <section aria-labelledby="home-categories" className="container-store pt-10 pb-16 sm:pt-14 sm:pb-24">
       <SectionHeading id="home-categories" eyebrow="Explorer" title="Parcourir par univers" action={{ label: "Toutes les catégories", href: "/categories" }} />
       {roots.length === 0 ? (
         <EmptyState className="mt-8" title="Les catégories arrivent bientôt" description="Découvrez en attendant l'ensemble de la boutique." action={<Link href="/shop" className="text-sm font-medium underline underline-offset-4">Voir la boutique</Link>} />

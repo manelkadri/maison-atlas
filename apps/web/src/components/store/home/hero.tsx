@@ -6,10 +6,10 @@ import { siteConfig } from "@/config/site";
 /** Hero immersif plein largeur (photo en fond, texte foncé sur la partie claire). Seul <h1> de la page d'accueil. */
 export function Hero() {
   return (
-    <section aria-labelledby="hero-title" className="bg-background relative isolate flex min-h-[88svh] items-end overflow-hidden sm:min-h-[72svh] lg:min-h-[80svh] lg:items-center">
+    <section aria-labelledby="hero-title" className="bg-background relative isolate flex min-h-[calc(100svh-5rem)] items-end overflow-hidden lg:min-h-[calc(100svh-6rem)] lg:items-center">
       {/* Photo : le modèle est à droite. Sur mobile elle occupe le haut de la section (le texte reste en bas, sans la recouvrir) ; dès `lg` elle remplit tout le fond. */}
       <div className="absolute inset-x-0 top-0 -z-20 h-[62%] [mask-image:linear-gradient(to_bottom,black_62%,transparent)] sm:h-full sm:[mask-image:none]">
-        <Image src="/images/hero.jpg" alt="" fill priority sizes="100vw" className="object-cover object-[68%_30%] sm:object-[68%_35%] lg:object-[center_38%]" />
+        <Image src="/images/hero.jpg" alt="" fill priority quality={90} sizes="100vw" className="object-cover object-[68%_30%] sm:object-[68%_35%] lg:object-[center_38%]" />
       </div>
       {/* Voile clair : garantit le contraste du texte foncé (dégradé depuis le bas sur mobile, depuis la gauche sur ordinateur). */}
       <div className="from-background via-background/55 absolute inset-0 -z-10 bg-gradient-to-t to-transparent sm:from-background/85 sm:via-background/35 lg:from-background/75 lg:via-background/25 lg:bg-gradient-to-r" aria-hidden />

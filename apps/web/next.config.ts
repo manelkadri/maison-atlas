@@ -23,6 +23,8 @@ const nextConfig: NextConfig = {
   images: {
     // Images locales autorisées : visuels de démonstration (`/images`) et images téléversées servies par l'API (`/uploads`).
     localPatterns: [{ pathname: "/images/**" }, { pathname: "/uploads/**" }],
+    // 90 : photo plein écran de l'accueil (netteté) ; 75 : défaut pour le reste.
+    qualities: [75, 90],
     remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }, ...apiUploadsPattern()],
   },
   async rewrites() {
